@@ -1,0 +1,15 @@
+# Ignore generated document files
+*.pdf
+*.docx
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
