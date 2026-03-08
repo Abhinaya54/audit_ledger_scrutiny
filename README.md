@@ -76,10 +76,4 @@ Outputs
 Notes and next steps
 - This repository contains some non-source documents (PDF/DOCX) in `audit/`.
   They are ignored by the repo's `.gitignore` and will not be pushed.
-- If you want to remove already-tracked PDFs/DOCXs from the remote history,
-  I can help remove them safely (rewrite history) — tell me if you'd like that.
-
-Contact
--------
-If you want me to add example input files, CI, or package the app into a Docker
-container, tell me which you'd like and I will add it.
+-
