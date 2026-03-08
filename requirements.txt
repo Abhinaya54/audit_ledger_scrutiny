@@ -1,0 +1,8 @@
+pandas>=1.5
+numpy
+faker
+matplotlib
+seaborn
+openpyxl
+jupyterlab
+notebook
