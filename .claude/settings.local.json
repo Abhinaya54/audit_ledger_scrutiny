@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(ls -la \"c:/Users/abhin/OneDrive/Desktop/audit-master \\(1\\)/audit-master/audit/scrutiny\")"
-    ]
-  }
-}
