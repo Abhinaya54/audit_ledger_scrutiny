@@ -217,7 +217,7 @@ export default function DashboardPage({
                   <Cell key={i} fill={PIE_COLORS[i]} />
                 ))}
               </Pie>
-              <ReTooltip formatter={(v: number) => v.toLocaleString('en-IN')} />
+              <ReTooltip formatter={(v) => Number(v).toLocaleString('en-IN')} />
               <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>

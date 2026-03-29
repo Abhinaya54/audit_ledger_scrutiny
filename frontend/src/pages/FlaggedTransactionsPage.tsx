@@ -3,7 +3,7 @@ import {
   PieChart, Pie, Cell, Tooltip as ReTooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import LiveFilters, { defaultFilters } from '../components/scrutiny/LiveFilters';
+import LiveFilters from '../components/scrutiny/LiveFilters';
 import type { FilterState } from '../components/scrutiny/LiveFilters';
 import Disclaimer from '../components/common/Disclaimer';
 import type { ScrutinyResponse, DisplayRow } from '../types/scrutiny';
@@ -183,7 +183,7 @@ export default function FlaggedTransactionsPage({
               <Pie data={severityCounts} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
                 {severityCounts.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
-              <ReTooltip formatter={(v: number) => v.toLocaleString()} />
+              <ReTooltip formatter={(v) => Number(v).toLocaleString()} />
               <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10 }} />
             </PieChart>
           </ResponsiveContainer>

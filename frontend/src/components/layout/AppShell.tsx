@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { analyzeFile, exportReport } from '../../api/scrutinyApi';
 import { triggerDownload } from '../../utils/format';
 import { defaultFilters, applyFilters, getSeverity } from '../scrutiny/LiveFilters';
@@ -22,7 +22,7 @@ export const SENSITIVITY_STEPS = [
 ];
 
 /* ─── Nav items ───────────────────────────────────────────────────── */
-const NAV_ITEMS: { id: Page; label: string; icon: JSX.Element; workflow?: boolean }[] = [
+const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode; workflow?: boolean }[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
