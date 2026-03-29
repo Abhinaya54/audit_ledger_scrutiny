@@ -11,13 +11,16 @@ from routers import scrutiny, generator
 
 app = FastAPI(title="Audit Anomaly Detection API", version="1.0.0")
 
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+# Allow all origins — no cookies/auth used so wildcard is safe
+_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = _origins_env.split(",") if _origins_env and _origins_env != "*" else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=False,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
