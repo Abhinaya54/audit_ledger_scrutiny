@@ -37,9 +37,14 @@ async def export_report(
         return Response(
             content=excel_bytes,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=scrutiny_report.xlsx"},
+            headers={
+                "Content-Disposition": "attachment; filename=scrutiny_report.xlsx",
+                "Access-Control-Allow-Origin": "*",
+            },
         )
     except SchemaError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
     finally:
         os.unlink(tmp_path)
