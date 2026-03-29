@@ -11,7 +11,7 @@ from routers import scrutiny, generator
 
 app = FastAPI(title="Audit Anomaly Detection API", version="1.0.0")
 
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 
 app.add_middleware(
     CORSMiddleware,
