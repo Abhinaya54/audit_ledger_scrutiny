@@ -25,9 +25,10 @@ frontend/dist/
 .env
 .env.*
 
-# Documents
+# Documents & generated files
 *.pdf
 *.docx
+*.pptx
 
 # OS
 .DS_Store

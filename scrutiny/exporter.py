@@ -40,6 +40,92 @@ THIN_BORDER = Border(
 )
 
 
+def _build_summary_sheet(ws_sum, df_all: pd.DataFrame, flagged: pd.DataFrame) -> None:
+    """
+    Populate the Summary worksheet with three sections:
+      1. Overview — total rows, total flagged, % flagged
+      2. Counts by Rule — one row per scrutiny category
+      3. Top 5 Accounts — ledger_name accounts with the most flags
+    """
+    HEADING_FILL = PatternFill("solid", fgColor="1A376C")
+    HEADING_FONT = Font(color="FFFFFF", bold=True, size=10)
+    LABEL_FONT   = Font(bold=True, size=9)
+    VALUE_FONT   = Font(size=9)
+    SUBHEAD_FILL = PatternFill("solid", fgColor="D9E1F2")
+    SUBHEAD_FONT = Font(bold=True, size=9, color="1A376C")
+
+    total      = len(df_all)
+    n_flagged  = int(flagged["scrutiny_flag"].sum()) if "scrutiny_flag" in flagged.columns else len(flagged)
+    pct        = round(n_flagged / total * 100, 1) if total else 0.0
+
+    row = 1
+
+    # ── Section 1: Overview ───────────────────────────────────────────────────
+    for label, value in [
+        ("Overview", None),
+        ("Total GL Entries",  total),
+        ("Total Flagged",     n_flagged),
+        ("% Flagged",         f"{pct}%"),
+    ]:
+        if label == "Overview":
+            c = ws_sum.cell(row=row, column=1, value=label)
+            c.font = HEADING_FONT;  c.fill = HEADING_FILL
+            ws_sum.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+        else:
+            ws_sum.cell(row=row, column=1, value=label).font  = LABEL_FONT
+            ws_sum.cell(row=row, column=2, value=value).font  = VALUE_FONT
+        row += 1
+
+    row += 1  # blank row
+
+    # ── Section 2: Counts by Rule ─────────────────────────────────────────────
+    c = ws_sum.cell(row=row, column=1, value="Counts by Rule")
+    c.font = SUBHEAD_FONT;  c.fill = SUBHEAD_FILL
+    ws_sum.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+    row += 1
+
+    ws_sum.cell(row=row, column=1, value="Rule").font  = LABEL_FONT
+    ws_sum.cell(row=row, column=2, value="Count").font = LABEL_FONT
+    row += 1
+
+    # Explode multi-rule rows into individual categories
+    if not flagged.empty and "scrutiny_category" in flagged.columns:
+        cat_series = (
+            flagged["scrutiny_category"]
+            .str.split(", ")
+            .explode()
+            .str.strip()
+        )
+        cat_counts = cat_series.value_counts().sort_values(ascending=False)
+        for cat, cnt in cat_counts.items():
+            ws_sum.cell(row=row, column=1, value=cat).font  = VALUE_FONT
+            ws_sum.cell(row=row, column=2, value=int(cnt)).font = VALUE_FONT
+            row += 1
+
+    row += 1  # blank row
+
+    # ── Section 3: Top 5 Accounts ─────────────────────────────────────────────
+    c = ws_sum.cell(row=row, column=1, value="Top 5 Accounts by Flag Count")
+    c.font = SUBHEAD_FONT;  c.fill = SUBHEAD_FILL
+    ws_sum.merge_cells(start_row=row, start_column=1, end_row=row, end_column=2)
+    row += 1
+
+    ws_sum.cell(row=row, column=1, value="Account (Ledger Name)").font = LABEL_FONT
+    ws_sum.cell(row=row, column=2, value="Flags").font                 = LABEL_FONT
+    row += 1
+
+    if not flagged.empty and "ledger_name" in flagged.columns:
+        top5 = flagged["ledger_name"].value_counts().head(5)
+        for acct, cnt in top5.items():
+            ws_sum.cell(row=row, column=1, value=acct).font        = VALUE_FONT
+            ws_sum.cell(row=row, column=2, value=int(cnt)).font    = VALUE_FONT
+            row += 1
+
+    # Auto-fit column widths
+    ws_sum.column_dimensions["A"].width = 36
+    ws_sum.column_dimensions["B"].width = 12
+
+
 def export(df: pd.DataFrame, output_path: str = None) -> bytes:
     """
     Export the flagged GL rows to a styled Excel file.
@@ -131,6 +217,12 @@ def export(df: pd.DataFrame, output_path: str = None) -> bytes:
 
     # ── Freeze panes below header ─────────────────────────────────────────────
     ws.freeze_panes = f"A{header_row + 1}"
+
+    # ── Summary sheet ─────────────────────────────────────────────────────────
+    ws_sum = wb.create_sheet(title="Summary")
+    _build_summary_sheet(ws_sum, df, df[df["scrutiny_flag"]].copy() if "scrutiny_flag" in df.columns else flagged)
+    # Place Summary as the first tab
+    wb.move_sheet("Summary", offset=-wb.index(ws_sum))
 
     # ── Save ──────────────────────────────────────────────────────────────────
     output_buffer = io.BytesIO()

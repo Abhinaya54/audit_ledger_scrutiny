@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: audit-backend
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
