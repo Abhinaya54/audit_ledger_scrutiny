@@ -1,11 +1,14 @@
 import os
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import Response
+import traceback
+from fastapi import APIRouter, UploadFile, File, Form
+from fastapi.responses import Response, JSONResponse
 
 from services.scrutiny_service import save_upload, run_analysis, generate_report
 from scrutiny.ingestor import SchemaError
 
 router = APIRouter()
+
+CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
 
 
 @router.post("/analyze")
@@ -19,9 +22,14 @@ async def analyze(
         df, result = run_analysis(tmp_path, use_ml, contamination)
         return result
     except SchemaError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return JSONResponse(status_code=400, content={"detail": str(e)}, headers=CORS_HEADERS)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)}, headers=CORS_HEADERS)
     finally:
-        os.unlink(tmp_path)
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
 
 
 @router.post("/export")
@@ -43,8 +51,16 @@ async def export_report(
             },
         )
     except SchemaError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return JSONResponse(status_code=400, content={"detail": str(e)}, headers=CORS_HEADERS)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+        tb = traceback.format_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e), "trace": tb},
+            headers=CORS_HEADERS,
+        )
     finally:
-        os.unlink(tmp_path)
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
