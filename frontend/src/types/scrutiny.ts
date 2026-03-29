@@ -33,3 +33,5 @@ export interface ScrutinyResponse {
   category_counts: CategoryCount[];
   flagged_rows: FlaggedRow[];
 }
+
+export type DisplayRow = FlaggedRow & { severity: 'High' | 'Medium' | 'Low' };
