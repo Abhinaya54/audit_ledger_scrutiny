@@ -28,7 +28,6 @@ interface UploadPageProps {
   onFileSelect: (file: File) => void;
   onSensitivityChange: (step: number) => void;
   onAnalyze: () => void;
-  onGenerateClick: () => void;
 }
 
 export default function UploadPage({
@@ -38,7 +37,6 @@ export default function UploadPage({
   onFileSelect,
   onSensitivityChange,
   onAnalyze,
-  onGenerateClick,
 }: UploadPageProps) {
   const [dragOver, setDragOver] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -242,16 +240,6 @@ export default function UploadPage({
         </p>
       )}
 
-      {/* Subtle demo link */}
-      <p className="text-center text-[11px] text-slate-300">
-        Don't have a file?{' '}
-        <button
-          onClick={onGenerateClick}
-          className="text-slate-400 hover:text-slate-500 underline underline-offset-2 transition-colors"
-        >
-          Try with demo data
-        </button>
-      </p>
     </div>
   );
 }
