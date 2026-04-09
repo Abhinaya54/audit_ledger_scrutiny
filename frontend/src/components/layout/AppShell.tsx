@@ -72,7 +72,7 @@ const ANALYSIS_STEPS = [
   'Generating audit insights...',
 ];
 
-function AnalysisOverlay({ onDone }: { onDone?: () => void }) {
+function AnalysisOverlay({ estimatedEntries, onDone }: { estimatedEntries: number | null; onDone?: () => void }) {
   const [stepIdx, setStepIdx] = useState(0);
   const [progress, setProgress] = useState(4);
 
@@ -106,7 +106,9 @@ function AnalysisOverlay({ onDone }: { onDone?: () => void }) {
           Analyzing Your Ledger
         </h2>
         <p className="text-center text-xs text-slate-500 mb-6">
-          Please wait while we process your data
+          {estimatedEntries != null
+            ? `Analyzing ${estimatedEntries.toLocaleString()} entries...`
+            : 'Analyzing ledger entries...'}
         </p>
 
         {/* Progress bar */}
@@ -142,6 +144,24 @@ function AnalysisOverlay({ onDone }: { onDone?: () => void }) {
       </div>
     </div>
   );
+}
+
+async function estimateEntries(file: File): Promise<number | null> {
+  const name = file.name.toLowerCase();
+  if (!name.endsWith('.csv')) {
+    return null;
+  }
+
+  try {
+    const text = await file.text();
+    const rows = text
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== '')
+      .length;
+    return Math.max(0, rows - 1);
+  } catch {
+    return null;
+  }
 }
 
 /* ─── Workflow step indicator ─────────────────────────────────────── */
@@ -239,6 +259,7 @@ export default function AppShell() {
   const [results, setResults] = useState<ScrutinyResponse | null>(null);
   const [filters, setFilters] = useState<FilterState>(defaultFilters());
   const [darkMode, setDarkMode] = useState(false);
+  const [estimatedEntries, setEstimatedEntries] = useState<number | null>(null);
 
   const contamination = SENSITIVITY_STEPS[sensitivityStep].value;
 
@@ -257,6 +278,9 @@ export default function AppShell() {
 
   const handleAnalyze = async () => {
     if (!file) return;
+    const estimated = await estimateEntries(file);
+    setEstimatedEntries(estimated);
+
     setLoading(true);
     setError(null);
     setResults(null);
@@ -269,6 +293,7 @@ export default function AppShell() {
       setError(e instanceof Error ? e.message : 'Analysis failed');
     } finally {
       setLoading(false);
+      setEstimatedEntries(null);
     }
   };
 
@@ -292,7 +317,7 @@ export default function AppShell() {
     <div className={darkMode ? 'dark' : ''}>
       <div className="flex min-h-screen bg-[#F8FAFC] font-sans">
         {/* ── Loading overlay ── */}
-        {loading && <AnalysisOverlay />}
+        {loading && <AnalysisOverlay estimatedEntries={estimatedEntries} />}
 
         {/* ── Sidebar ── */}
         <aside className="w-60 bg-[#134E4A] min-h-screen flex flex-col fixed top-0 left-0 z-10 shadow-2xl">
@@ -421,16 +446,19 @@ export default function AppShell() {
           <div className="flex-1 p-8">
             {/* Error banner */}
             {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm flex items-start gap-3">
+              <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+                <p className="font-semibold text-red-800 mb-2">Error Console</p>
+                <div className="flex items-start gap-3">
                 <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
-                <span className="flex-1">{error}</span>
+                <div className="flex-1 whitespace-pre-wrap">{error}</div>
                 <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
+                </div>
               </div>
             )}
 

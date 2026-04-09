@@ -12,8 +12,8 @@ from scrutiny.exporter import export
 def _read_uploaded_dataframe(path: str) -> pd.DataFrame:
     """Read uploaded file without renaming columns to preserve original structure for export."""
     if path.endswith(".xlsx") or path.endswith(".xls"):
-        return pd.read_excel(path, dtype=str)
-    return pd.read_csv(path, dtype=str)
+        return pd.read_excel(path)
+    return pd.read_csv(path)
 
 
 def _build_export_dataframe(raw_df: pd.DataFrame, analyzed_df: pd.DataFrame) -> pd.DataFrame:
@@ -24,14 +24,8 @@ def _build_export_dataframe(raw_df: pd.DataFrame, analyzed_df: pd.DataFrame) -> 
     export_df = raw_df.copy().reset_index(drop=True)
     analyzed = analyzed_df.reset_index(drop=True)
 
-    export_df["Scrutiny Flag"] = analyzed["scrutiny_flag"].astype(bool)
-    export_df["Anomaly Type"] = analyzed["scrutiny_category"].fillna("")
-    export_df["Why Flagged"] = analyzed["scrutiny_reason"].fillna("")
-
-    if "ml_anomaly_flag" in analyzed.columns:
-        export_df["ML Anomaly Flag"] = analyzed["ml_anomaly_flag"].fillna("")
-    if "ml_anomaly_score" in analyzed.columns:
-        export_df["ML Anomaly Score"] = analyzed["ml_anomaly_score"].fillna("")
+    export_df["Scrutiny Category"] = analyzed["scrutiny_category"].fillna("")
+    export_df["Scrutiny Reason"] = analyzed["scrutiny_reason"].fillna("")
 
     return export_df
 
