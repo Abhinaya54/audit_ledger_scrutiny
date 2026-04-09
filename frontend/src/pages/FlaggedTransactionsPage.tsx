@@ -14,6 +14,11 @@ interface Props {
   onUploadClick: () => void;
 }
 
+interface SheetTab {
+  id: string;
+  label: string;
+}
+
 function toText(value: unknown): string {
   if (value == null) return '';
   return String(value);
@@ -36,7 +41,13 @@ export default function FlaggedTransactionsPage({
   onExport,
   onUploadClick,
 }: Props) {
-  const [activeSheet, setActiveSheet] = useState<'Sheet1' | 'Sheet2'>('Sheet1');
+  const [sheetTabs, setSheetTabs] = useState<SheetTab[]>([
+    { id: 'Sheet1', label: 'Suspicious_Transactions' },
+    { id: 'Sheet2', label: 'Summary' },
+  ]);
+  const [activeSheet, setActiveSheet] = useState('Sheet1');
+  const [renamingSheetId, setRenamingSheetId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const [anomalyFilter, setAnomalyFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<string>('');
@@ -109,6 +120,41 @@ export default function FlaggedTransactionsPage({
   };
 
   const canExport = approvalStatus === 'approved';
+
+  const addSheet = () => {
+    setSheetTabs((prev) => {
+      const maxSheetNumber = prev.reduce((max, tab) => {
+        const parsed = Number.parseInt(tab.id.replace('Sheet', ''), 10);
+        return Number.isNaN(parsed) ? max : Math.max(max, parsed);
+      }, 0);
+      const nextId = `Sheet${maxSheetNumber + 1}`;
+      setActiveSheet(nextId);
+      return [...prev, { id: nextId, label: 'New_Sheet' }];
+    });
+  };
+
+  const startRenameSheet = (tabId: string, currentLabel: string) => {
+    setRenamingSheetId(tabId);
+    setRenameValue(currentLabel);
+  };
+
+  const commitRenameSheet = (tabId: string) => {
+    const nextLabel = renameValue.trim();
+    if (!nextLabel) {
+      setRenamingSheetId(null);
+      return;
+    }
+
+    setSheetTabs((prev) =>
+      prev.map((tab) => (tab.id === tabId ? { ...tab, label: nextLabel } : tab)),
+    );
+    setRenamingSheetId(null);
+  };
+
+  const cancelRenameSheet = () => {
+    setRenamingSheetId(null);
+    setRenameValue('');
+  };
 
   const summaryRows = useMemo(() => {
     const counts = new Map<string, number>();
@@ -204,7 +250,9 @@ export default function FlaggedTransactionsPage({
         <div className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium">
           {activeSheet === 'Sheet1'
             ? `Showing ${filteredRows.length.toLocaleString()} of ${reviewRows.length.toLocaleString()} suspicious transactions`
-            : `Summary for ${filteredRows.length.toLocaleString()} suspicious transactions`}
+            : activeSheet === 'Sheet2'
+            ? `Summary for ${filteredRows.length.toLocaleString()} suspicious transactions`
+            : `Empty worksheet ${activeSheet}`}
         </div>
 
         {activeSheet === 'Sheet1' ? (
@@ -260,7 +308,7 @@ export default function FlaggedTransactionsPage({
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeSheet === 'Sheet2' ? (
           <div className="overflow-auto max-h-[68vh]">
             <table className="w-full border-collapse text-xs">
               <thead className="sticky top-0 z-10">
@@ -287,28 +335,63 @@ export default function FlaggedTransactionsPage({
               </tbody>
             </table>
           </div>
+        ) : (
+          <div className="flex min-h-[240px] items-center justify-center px-6 py-10 text-center text-slate-500">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">{activeSheet}</p>
+              <p className="mt-1 text-xs">New sheet created. Data can be added here later.</p>
+            </div>
+          </div>
         )}
 
         <div className="flex items-end gap-1 border-t border-slate-200 bg-slate-100 px-2 pt-2">
+          {sheetTabs.map((tab) => (
+            <div
+              key={tab.id}
+              onDoubleClick={() => startRenameSheet(tab.id, tab.label)}
+              className={`rounded-t-md border px-4 py-1.5 text-xs font-medium ${
+                activeSheet === tab.id
+                  ? 'bg-white border-slate-300 border-b-white text-slate-800'
+                  : 'bg-slate-200 border-slate-300 text-slate-600 hover:bg-slate-300'
+              }`}
+            >
+              {renamingSheetId === tab.id ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={() => commitRenameSheet(tab.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitRenameSheet(tab.id);
+                    }
+                    if (e.key === 'Escape') {
+                      cancelRenameSheet();
+                    }
+                  }}
+                  className="w-40 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 outline-none"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setActiveSheet(tab.id)}
+                  className="text-left"
+                  title="Double-click to rename"
+                >
+                  {tab.id} ({tab.label})
+                </button>
+              )}
+            </div>
+          ))}
           <button
-            onClick={() => setActiveSheet('Sheet1')}
-            className={`rounded-t-md border px-4 py-1.5 text-xs font-medium ${
-              activeSheet === 'Sheet1'
-                ? 'bg-white border-slate-300 border-b-white text-slate-800'
-                : 'bg-slate-200 border-slate-300 text-slate-600 hover:bg-slate-300'
-            }`}
+            type="button"
+            onClick={addSheet}
+            aria-label="Add sheet"
+            title="Add sheet"
+            className="mb-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
           >
-            Sheet1 (Suspicious_Transactions)
-          </button>
-          <button
-            onClick={() => setActiveSheet('Sheet2')}
-            className={`rounded-t-md border px-4 py-1.5 text-xs font-medium ${
-              activeSheet === 'Sheet2'
-                ? 'bg-white border-slate-300 border-b-white text-slate-800'
-                : 'bg-slate-200 border-slate-300 text-slate-600 hover:bg-slate-300'
-            }`}
-          >
-            Sheet2 (Summary)
+            <span className="text-base leading-none">+</span>
           </button>
         </div>
       </div>
