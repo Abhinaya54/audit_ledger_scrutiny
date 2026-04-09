@@ -21,11 +21,13 @@ export async function exportReport(
   file: File,
   useMl: boolean,
   contamination: number,
+  approved = false,
 ): Promise<Blob> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('use_ml', String(useMl));
   formData.append('contamination', String(contamination));
+  formData.append('approved', String(approved));
 
   return apiDownload('/api/scrutiny/export', {
     method: 'POST',

@@ -45,7 +45,7 @@ export default function ScrutinyTab() {
     if (!file) return;
     setExporting(true);
     try {
-      const blob = await exportReport(file, useMl, contamination);
+      const blob = await exportReport(file, useMl, contamination, true);
       triggerDownload(blob, 'scrutiny_report.xlsx');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Export failed');

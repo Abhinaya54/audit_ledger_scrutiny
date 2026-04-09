@@ -1,386 +1,249 @@
-import { useState, useMemo } from 'react';
-import {
-  PieChart, Pie, Cell, Tooltip as ReTooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-} from 'recharts';
-import LiveFilters from '../components/scrutiny/LiveFilters';
-import type { FilterState } from '../components/scrutiny/LiveFilters';
-import Disclaimer from '../components/common/Disclaimer';
-import type { ScrutinyResponse, DisplayRow } from '../types/scrutiny';
+import { useMemo, useState } from 'react';
+import type { ScrutinyResponse } from '../types/scrutiny';
 
-/* ── Display helpers ── */
-const CATEGORY_LABELS: Record<string, string> = {
-  'ML Anomaly': 'AI Detection',
-  'Round Numbers': 'Round Amounts',
-  'Weekend Entries': 'Weekend Posting',
-  'Weak Narration': 'Insufficient Description',
-  'Period End': 'Period-End Concentration',
-  'Duplicate Check': 'Duplicate Entry',
-  'Manual Journal': 'Manual Entry',
-};
+type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 
-function toDisplay(raw: string) {
-  return CATEGORY_LABELS[raw] ?? raw;
-}
-
-function computeRiskScore(row: DisplayRow): number {
-  const base = { High: 82, Medium: 57, Low: 32 }[row.severity] ?? 32;
-  if (row.ml_anomaly_score != null && row.ml_anomaly_flag === -1) {
-    const norm = Math.min(100, Math.max(0, Math.round(Math.abs(row.ml_anomaly_score) * 200)));
-    return Math.max(base, norm);
-  }
-  return base;
-}
-
-function RiskBadge({ score }: { score: number }) {
-  const cls =
-    score >= 75
-      ? 'bg-red-50 text-red-700 border-red-200'
-      : score >= 50
-      ? 'bg-amber-50 text-amber-700 border-amber-200'
-      : 'bg-green-50 text-green-700 border-green-200';
-  return (
-    <span className={`inline-block text-[10px] font-bold border px-1.5 py-0.5 rounded-full ${cls}`}>
-      {score}
-    </span>
-  );
-}
-
-/* ── Props ── */
 interface Props {
   results: ScrutinyResponse | null;
-  rows: DisplayRow[];
-  filters: FilterState;
+  reviewRows: Record<string, unknown>[];
   exporting: boolean;
-  onFiltersChange: (f: FilterState) => void;
+  approvalStatus: ApprovalStatus;
+  onApprove: () => void;
+  onReject: () => void;
   onExport: () => void;
   onUploadClick: () => void;
-  onInsightsClick: () => void;
 }
 
-const PIE_COLORS = ['#EF4444', '#F59E0B', '#10B981'];
-
-/* ── Empty state ── */
-function EmptyState({ onUploadClick }: { onUploadClick: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-5">
-        <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-        </svg>
-      </div>
-      <h2 className="text-lg font-bold text-slate-800 mb-2">No Results Yet</h2>
-      <p className="text-sm text-slate-400 mb-6 max-w-xs">Run an analysis first to see suspicious transactions.</p>
-      <button
-        onClick={onUploadClick}
-        className="px-5 py-2.5 bg-[#0F766E] text-white rounded-xl text-sm font-semibold hover:bg-[#115E59] transition-colors"
-      >
-        Upload & Analyze
-      </button>
-    </div>
-  );
+function toText(value: unknown): string {
+  if (value == null) return '';
+  return String(value);
 }
 
-/* ── Main component ── */
+function splitCategories(value: unknown): string[] {
+  return toText(value)
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+}
+
 export default function FlaggedTransactionsPage({
-  results, rows, filters, exporting, onFiltersChange, onExport, onUploadClick, onInsightsClick,
+  results,
+  reviewRows,
+  exporting,
+  approvalStatus,
+  onApprove,
+  onReject,
+  onExport,
+  onUploadClick,
 }: Props) {
-  const [showHighOnly, setShowHighOnly] = useState(false);
-  const [sortByRisk, setSortByRisk] = useState(false);
+  const [anomalyFilter, setAnomalyFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<string>('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  if (!results) return <EmptyState onUploadClick={onUploadClick} />;
+  if (!results) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+        <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-5">
+          <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <h2 className="text-lg font-bold text-slate-800 mb-2">No Suspicious Transactions Yet</h2>
+        <p className="text-sm text-slate-400 mb-6 max-w-xs">Run analysis on the upload page to start auditor review.</p>
+        <button
+          onClick={onUploadClick}
+          className="px-5 py-2.5 bg-[#0F766E] text-white rounded-xl text-sm font-semibold hover:bg-[#115E59] transition-colors"
+        >
+          Upload & Analyze
+        </button>
+      </div>
+    );
+  }
 
-  const enriched = useMemo(
-    () => rows.map((r) => ({ ...r, _riskScore: computeRiskScore(r) })),
-    [rows],
-  );
+  const columns = reviewRows.length > 0 ? Object.keys(reviewRows[0]) : [];
+  const anomalyColumn = columns.find((c) => c === 'Anomaly_Type') ?? 'Anomaly_Type';
+  const reasonColumn = columns.find((c) => c === 'Reason') ?? 'Reason';
 
-  const displayed = useMemo(() => {
+  const anomalyOptions = useMemo(() => {
+    const set = new Set<string>();
+    reviewRows.forEach((row) => {
+      splitCategories(row[anomalyColumn]).forEach((cat) => set.add(cat));
+    });
+    return ['All', ...Array.from(set).sort()];
+  }, [reviewRows, anomalyColumn]);
+
+  const filteredRows = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
-    let list = showHighOnly ? enriched.filter((r) => r._riskScore >= 75) : enriched;
-    if (q) {
-      list = list.filter((r) =>
-        [
-          r.voucher_no,
-          r.date,
-          r.ledger_name,
-          r.narration,
-          r.scrutiny_category,
-          r.scrutiny_reason,
-          String(r.amount),
-        ]
-          .join(' ')
-          .toLowerCase()
-          .includes(q),
-      );
+
+    let rows = reviewRows.filter((row) => {
+      const rowCategories = splitCategories(row[anomalyColumn]);
+      if (anomalyFilter !== 'All' && !rowCategories.includes(anomalyFilter)) {
+        return false;
+      }
+
+      if (!q) return true;
+      return columns.some((col) => toText(row[col]).toLowerCase().includes(q));
+    });
+
+    if (sortBy) {
+      rows = [...rows].sort((a, b) => {
+        const av = toText(a[sortBy]);
+        const bv = toText(b[sortBy]);
+        const cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' });
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
     }
-    if (sortByRisk) list = [...list].sort((a, b) => b._riskScore - a._riskScore);
-    return list;
-  }, [enriched, showHighOnly, sortByRisk, searchTerm]);
 
-  /* Severity breakdown for pie */
-  const severityCounts = useMemo(() => {
-    const high = rows.filter((r) => r.severity === 'High').length;
-    const med = rows.filter((r) => r.severity === 'Medium').length;
-    const low = rows.filter((r) => r.severity === 'Low').length;
-    return [
-      { name: 'High Risk', value: high },
-      { name: 'Medium Risk', value: med },
-      { name: 'Low Risk', value: low },
-    ].filter((d) => d.value > 0);
-  }, [rows]);
+    return rows;
+  }, [reviewRows, anomalyFilter, searchTerm, columns, anomalyColumn, sortBy, sortDir]);
 
-  /* Category bar data */
-  const categoryData = useMemo(
-    () =>
-      [...results.category_counts]
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 6)
-        .map((c) => ({ name: toDisplay(c.category), count: c.count })),
-    [results.category_counts],
-  );
-
-  const activeFilters =
-    filters.rules.length + filters.severities.length + filters.accounts.length +
-    (filters.dateFrom || filters.dateTo ? 1 : 0);
-
-  const COLS = [
-    { key: 'date', label: 'Date' },
-    { key: 'ledger_name', label: 'Ledger / Account' },
-    { key: 'amount', label: 'Amount' },
-    { key: 'narration', label: 'Narration' },
-    { key: 'scrutiny_category', label: 'Anomaly Type' },
-    { key: '_riskScore', label: 'Risk Score' },
-    { key: 'severity', label: 'Flag' },
-  ] as const;
-
-  const ROW_BG: Record<string, string> = {
-    High:   'bg-red-50/60 border-l-4 border-l-red-400',
-    Medium: 'bg-amber-50/50 border-l-4 border-l-amber-400',
-    Low:    'bg-white border-l-4 border-l-transparent',
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+    setSortBy(col);
+    setSortDir('asc');
   };
 
-  const FLAG_BADGE: Record<string, string> = {
-    High:   'bg-red-100 text-red-700',
-    Medium: 'bg-amber-100 text-amber-700',
-    Low:    'bg-slate-100 text-slate-600',
-  };
+  const canExport = approvalStatus === 'approved';
 
   return (
-    <div className="space-y-6">
-      {/* ── Charts ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Category bar — 3 cols */}
-        <div className="lg:col-span-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-800 mb-1">Anomaly Category Breakdown</h3>
-          <p className="text-xs text-slate-400 mb-4">Number of suspicious transactions per rule</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={categoryData} margin={{ top: 0, right: 10, bottom: 20, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 9, fill: '#94a3b8' }}
-                interval={0}
-                angle={-20}
-                textAnchor="end"
-              />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} />
-              <ReTooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="count" name="Transactions" fill="#0F766E" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Risk pie — 2 cols */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <h3 className="text-sm font-bold text-slate-800 mb-1">Risk Distribution</h3>
-          <p className="text-xs text-slate-400 mb-2">High / Medium / Low severity</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={severityCounts} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value">
-                {severityCounts.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
-              </Pie>
-              <ReTooltip formatter={(v) => Number(v).toLocaleString()} />
-              <Legend iconType="circle" iconSize={7} wrapperStyle={{ fontSize: 10 }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-3 gap-1 mt-1">
-            {severityCounts.map((d, i) => (
-              <div key={d.name} className="text-center">
-                <p className="text-sm font-bold" style={{ color: PIE_COLORS[i] }}>{d.value}</p>
-                <p className="text-[10px] text-slate-400">{d.name.split(' ')[0]}</p>
-              </div>
-            ))}
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">Suspicious Transactions</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Review anomalies, approve the audit decision, then download the report.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              approvalStatus === 'approved'
+                ? 'bg-emerald-100 text-emerald-700'
+                : approvalStatus === 'rejected'
+                ? 'bg-red-100 text-red-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {approvalStatus === 'approved'
+                ? 'Approved'
+                : approvalStatus === 'rejected'
+                ? 'Rejected'
+                : 'Pending Review'}
+            </span>
           </div>
         </div>
-      </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-semibold text-slate-800">
-            {displayed.length.toLocaleString()} suspicious transactions
-          </span>
-          {activeFilters > 0 && (
-            <span className="text-xs bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded-full font-medium">
-              {activeFilters} filter{activeFilters > 1 ? 's' : ''} active
-            </span>
-          )}
-        </div>
-
-        <div className="relative w-full max-w-xs">
-          <svg
-            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <select
+            value={anomalyFilter}
+            onChange={(e) => setAnomalyFilter(e.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.15 6.15a7.5 7.5 0 0 0 10.5 10.5Z"
-            />
-          </svg>
+            {anomalyOptions.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt === 'All' ? 'All Anomaly Types' : opt}
+              </option>
+            ))}
+          </select>
+
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search detections"
-            className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 focus:border-teal-500 focus:outline-none"
+            placeholder="Search rows"
+            className="w-64 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
           />
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <button
+              onClick={onReject}
+              className="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100"
+            >
+              Reject
+            </button>
+            <button
+              onClick={onApprove}
+              className="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100"
+            >
+              Approve
+            </button>
+            <button
+              onClick={onExport}
+              disabled={!canExport || exporting}
+              className="px-4 py-1.5 rounded-lg bg-[#0F766E] text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#115E59]"
+            >
+              {exporting ? 'Generating...' : 'Download Report'}
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* High risk toggle */}
-          <button
-            onClick={() => setShowHighOnly((v) => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-              showHighOnly
-                ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'
-            }`}
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            {showHighOnly ? 'High Risk Only ✓' : 'Show High Risk Only'}
-          </button>
-
-          {/* Sort by risk */}
-          <button
-            onClick={() => setSortByRisk((v) => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-              sortByRisk
-                ? 'bg-[#0F766E] text-white border-[#0F766E]'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-[#0F766E] hover:text-[#0F766E]'
-            }`}
-          >
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
-            </svg>
-            {sortByRisk ? 'By Risk Score ✓' : 'Sort by Risk Score'}
-          </button>
-
-          {/* Export */}
-          <button
-            onClick={onExport}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-semibold transition-colors"
-          >
-            {exporting ? (
-              <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-            )}
-            {exporting ? 'Exporting...' : 'Export Report'}
-          </button>
-        </div>
+        {!canExport && (
+          <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Export is disabled until the auditor approves the suspicious transactions.
+          </p>
+        )}
       </div>
 
-      {/* ── Filters ── */}
-      <LiveFilters rows={results.flagged_rows} filters={filters} onChange={onFiltersChange} />
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium">
+          Showing {filteredRows.length.toLocaleString()} of {reviewRows.length.toLocaleString()} suspicious transactions
+        </div>
 
-      {/* ── Table ── */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
+        <div className="overflow-auto max-h-[68vh]">
+          <table className="w-full min-w-max border-collapse text-xs">
+            <thead className="sticky top-0 z-10">
               <tr className="bg-slate-800 text-white">
-                {COLS.map((col) => (
-                  <th key={col.key} className="px-4 py-3 text-left font-semibold uppercase tracking-wider whitespace-nowrap text-[10px]">
-                    {col.label}
+                {columns.map((col) => (
+                  <th
+                    key={col}
+                    onClick={() => handleSort(col)}
+                    className="px-3 py-2 text-left font-semibold border border-slate-700 whitespace-nowrap cursor-pointer select-none"
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{col}</span>
+                      {sortBy === col && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                    </div>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {displayed.length === 0 ? (
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={COLS.length} className="text-center py-10 text-slate-400 text-sm">
-                    No transactions match the current filters
+                  <td colSpan={Math.max(columns.length, 1)} className="px-4 py-10 text-center text-slate-500 border border-slate-200">
+                    No rows match the selected anomaly filter or search term.
                   </td>
                 </tr>
               ) : (
-                displayed.slice(0, 200).map((row, i) => (
-                  <tr
-                    key={i}
-                    className={`${ROW_BG[row.severity] ?? 'bg-white'} border-b border-slate-100 last:border-0 hover:brightness-[0.97] transition-all`}
-                  >
-                    <td className="px-4 py-2.5 whitespace-nowrap text-slate-600">
-                      {row.date.slice(0, 10)}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap font-medium text-slate-800 max-w-[160px] truncate">
-                      {row.ledger_name}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold text-slate-800">
-                      ₹{Math.abs(row.amount).toLocaleString('en-IN')}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-500 max-w-[200px] truncate">
-                      {row.narration || '—'}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                        {toDisplay(row.scrutiny_category.split(',')[0].trim())}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <RiskBadge score={row._riskScore} />
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${FLAG_BADGE[row.severity]}`}>
-                        {row.severity}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filteredRows.map((row, idx) => {
+                  const hasAnomaly = toText(row[anomalyColumn]).trim().length > 0;
+                  return (
+                    <tr
+                      key={idx}
+                      className={hasAnomaly ? 'bg-amber-50/60 hover:bg-amber-100/50' : 'bg-white hover:bg-slate-50'}
+                    >
+                      {columns.map((col) => (
+                        <td
+                          key={`${idx}-${col}`}
+                          className={`px-3 py-2 border border-slate-200 align-top ${
+                            col === anomalyColumn || col === reasonColumn
+                              ? 'max-w-[340px] whitespace-normal break-words'
+                              : 'whitespace-nowrap'
+                          }`}
+                        >
+                          {toText(row[col]) || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
-        {displayed.length > 200 && (
-          <div className="px-4 py-3 border-t border-slate-100 text-xs text-slate-400 text-center bg-slate-50">
-            Showing first 200 of {displayed.length.toLocaleString()} rows. Export for full data.
-          </div>
-        )}
-      </div>
-
-      <Disclaimer />
-
-      {/* View insights CTA */}
-      <div className="flex justify-end">
-        <button
-          onClick={onInsightsClick}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#0F766E] hover:bg-[#115E59] text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
-        >
-          View Insights & Report
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-          </svg>
-        </button>
       </div>
     </div>
   );
