@@ -36,6 +36,7 @@ export default function FlaggedTransactionsPage({
   onExport,
   onUploadClick,
 }: Props) {
+  const [activeSheet, setActiveSheet] = useState<'Sheet1' | 'Sheet2'>('Sheet1');
   const [anomalyFilter, setAnomalyFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<string>('');
@@ -108,6 +109,18 @@ export default function FlaggedTransactionsPage({
   };
 
   const canExport = approvalStatus === 'approved';
+
+  const summaryRows = useMemo(() => {
+    const counts = new Map<string, number>();
+    filteredRows.forEach((row) => {
+      splitCategories(row[anomalyColumn]).forEach((cat) => {
+        counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      });
+    });
+    return Array.from(counts.entries())
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [filteredRows, anomalyColumn]);
 
   return (
     <div className="space-y-4">
@@ -189,60 +202,114 @@ export default function FlaggedTransactionsPage({
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-xs text-slate-600 font-medium">
-          Showing {filteredRows.length.toLocaleString()} of {reviewRows.length.toLocaleString()} suspicious transactions
+          {activeSheet === 'Sheet1'
+            ? `Showing ${filteredRows.length.toLocaleString()} of ${reviewRows.length.toLocaleString()} suspicious transactions`
+            : `Summary for ${filteredRows.length.toLocaleString()} suspicious transactions`}
         </div>
 
-        <div className="overflow-auto max-h-[68vh]">
-          <table className="w-full min-w-max border-collapse text-xs">
-            <thead className="sticky top-0 z-10">
-              <tr className="bg-slate-800 text-white">
-                {columns.map((col) => (
-                  <th
-                    key={col}
-                    onClick={() => handleSort(col)}
-                    className="px-3 py-2 text-left font-semibold border border-slate-700 whitespace-nowrap cursor-pointer select-none"
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>{col}</span>
-                      {sortBy === col && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={Math.max(columns.length, 1)} className="px-4 py-10 text-center text-slate-500 border border-slate-200">
-                    No rows match the selected anomaly filter or search term.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((row, idx) => {
-                  const hasAnomaly = toText(row[anomalyColumn]).trim().length > 0;
-                  return (
-                    <tr
-                      key={idx}
-                      className={hasAnomaly ? 'bg-amber-50/60 hover:bg-amber-100/50' : 'bg-white hover:bg-slate-50'}
+        {activeSheet === 'Sheet1' ? (
+          <div className="overflow-auto max-h-[68vh]">
+            <table className="w-full min-w-max border-collapse text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-800 text-white">
+                  {columns.map((col) => (
+                    <th
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      className="px-3 py-2 text-left font-semibold border border-slate-700 whitespace-nowrap cursor-pointer select-none"
                     >
-                      {columns.map((col) => (
-                        <td
-                          key={`${idx}-${col}`}
-                          className={`px-3 py-2 border border-slate-200 align-top ${
-                            col === anomalyColumn || col === reasonColumn
-                              ? 'max-w-[340px] whitespace-normal break-words'
-                              : 'whitespace-nowrap'
-                          }`}
-                        >
-                          {toText(row[col]) || '-'}
-                        </td>
-                      ))}
+                      <div className="flex items-center gap-1">
+                        <span>{col}</span>
+                        {sortBy === col && <span>{sortDir === 'asc' ? '↑' : '↓'}</span>}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={Math.max(columns.length, 1)} className="px-4 py-10 text-center text-slate-500 border border-slate-200">
+                      No rows match the selected anomaly filter or search term.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((row, idx) => {
+                    const hasAnomaly = toText(row[anomalyColumn]).trim().length > 0;
+                    return (
+                      <tr
+                        key={idx}
+                        className={hasAnomaly ? 'bg-amber-50/60 hover:bg-amber-100/50' : 'bg-white hover:bg-slate-50'}
+                      >
+                        {columns.map((col) => (
+                          <td
+                            key={`${idx}-${col}`}
+                            className={`px-3 py-2 border border-slate-200 align-top ${
+                              col === anomalyColumn || col === reasonColumn
+                                ? 'max-w-[340px] whitespace-normal break-words'
+                                : 'whitespace-nowrap'
+                            }`}
+                          >
+                            {toText(row[col]) || '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-auto max-h-[68vh]">
+            <table className="w-full border-collapse text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-800 text-white">
+                  <th className="px-3 py-2 text-left font-semibold border border-slate-700 whitespace-nowrap">Anomaly_Type</th>
+                  <th className="px-3 py-2 text-left font-semibold border border-slate-700 whitespace-nowrap">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summaryRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="px-4 py-10 text-center text-slate-500 border border-slate-200">
+                      No anomaly summary available for the current filter.
+                    </td>
+                  </tr>
+                ) : (
+                  summaryRows.map((row) => (
+                    <tr key={row.type} className="bg-white hover:bg-slate-50">
+                      <td className="px-3 py-2 border border-slate-200">{row.type}</td>
+                      <td className="px-3 py-2 border border-slate-200 font-semibold">{row.count.toLocaleString()}</td>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex items-end gap-1 border-t border-slate-200 bg-slate-100 px-2 pt-2">
+          <button
+            onClick={() => setActiveSheet('Sheet1')}
+            className={`rounded-t-md border px-4 py-1.5 text-xs font-medium ${
+              activeSheet === 'Sheet1'
+                ? 'bg-white border-slate-300 border-b-white text-slate-800'
+                : 'bg-slate-200 border-slate-300 text-slate-600 hover:bg-slate-300'
+            }`}
+          >
+            Sheet1 (Suspicious_Transactions)
+          </button>
+          <button
+            onClick={() => setActiveSheet('Sheet2')}
+            className={`rounded-t-md border px-4 py-1.5 text-xs font-medium ${
+              activeSheet === 'Sheet2'
+                ? 'bg-white border-slate-300 border-b-white text-slate-800'
+                : 'bg-slate-200 border-slate-300 text-slate-600 hover:bg-slate-300'
+            }`}
+          >
+            Sheet2 (Summary)
+          </button>
         </div>
       </div>
     </div>
