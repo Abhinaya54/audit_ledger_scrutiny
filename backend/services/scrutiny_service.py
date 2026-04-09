@@ -9,8 +9,41 @@ from scrutiny.ml.model import train, predict
 from scrutiny.exporter import export
 
 
+def _read_uploaded_dataframe(path: str) -> pd.DataFrame:
+    """Read uploaded file without renaming columns to preserve original structure for export."""
+    if path.endswith(".xlsx") or path.endswith(".xls"):
+        return pd.read_excel(path, dtype=str)
+    return pd.read_csv(path, dtype=str)
+
+
+def _build_export_dataframe(raw_df: pd.DataFrame, analyzed_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Keep uploaded columns exactly as-is and append generated scrutiny columns at the end.
+    Row order is preserved from ingestion/analysis.
+    """
+    export_df = raw_df.copy().reset_index(drop=True)
+    analyzed = analyzed_df.reset_index(drop=True)
+
+    export_df["Scrutiny Flag"] = analyzed["scrutiny_flag"].astype(bool)
+    export_df["Anomaly Type"] = analyzed["scrutiny_category"].fillna("")
+    export_df["Why Flagged"] = analyzed["scrutiny_reason"].fillna("")
+
+    if "ml_anomaly_flag" in analyzed.columns:
+        export_df["ML Anomaly Flag"] = analyzed["ml_anomaly_flag"].fillna("")
+    if "ml_anomaly_score" in analyzed.columns:
+        export_df["ML Anomaly Score"] = analyzed["ml_anomaly_score"].fillna("")
+
+    return export_df
+
+
 async def save_upload(file: UploadFile) -> str:
-    suffix = ".xlsx" if file.filename and file.filename.endswith(".xlsx") else ".csv"
+    filename = (file.filename or "").lower()
+    if filename.endswith(".xlsx"):
+        suffix = ".xlsx"
+    elif filename.endswith(".xls"):
+        suffix = ".xls"
+    else:
+        suffix = ".csv"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
     content = await file.read()
     tmp.write(content)
@@ -19,6 +52,7 @@ async def save_upload(file: UploadFile) -> str:
 
 
 def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.DataFrame, dict]:
+    raw_df = _read_uploaded_dataframe(tmp_path)
     df = ingest(tmp_path)
 
     df = run_all_rules(df)
@@ -67,7 +101,9 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
         "pct_flagged": round(total_flagged / len(df) * 100, 1) if len(df) > 0 else 0,
     }
 
-    return df, {"summary": summary, "category_counts": category_counts, "flagged_rows": flagged_rows}
+    export_df = _build_export_dataframe(raw_df, df)
+
+    return export_df, {"summary": summary, "category_counts": category_counts, "flagged_rows": flagged_rows}
 
 
 def generate_report(df: pd.DataFrame) -> bytes:

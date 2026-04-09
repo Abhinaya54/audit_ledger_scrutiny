@@ -1,38 +1,49 @@
 # scrutiny/exporter.py
-# Minimal, crash-proof Excel export for Render free tier (512 MB).
-# Uses plain pandas to_excel — no openpyxl styling that could OOM.
-# Adds two columns: "Anomaly Type" and "Why Flagged".
+# Excel export helper with layout formatting for readability.
+# Preserves incoming DataFrame column names and order as provided.
 
 import io
 import pandas as pd
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
 
 
 def export(df: pd.DataFrame, output_path: str = None) -> bytes:
-    """Return ALL GL rows as .xlsx with Anomaly Type + Why Flagged columns."""
+    """Export DataFrame to Excel while preserving incoming column names and order."""
 
     out = df.copy().reset_index(drop=True)
 
-    # Add the two audit columns (blank for clean rows)
-    out["Anomaly Type"] = ""
-    out["Why Flagged"]  = ""
-
-    if "scrutiny_flag" in out.columns:
-        mask = out["scrutiny_flag"].astype(bool)
-        if "scrutiny_category" in out.columns:
-            out.loc[mask, "Anomaly Type"] = out.loc[mask, "scrutiny_category"].fillna("")
-        if "scrutiny_reason" in out.columns:
-            out.loc[mask, "Why Flagged"] = out.loc[mask, "scrutiny_reason"].fillna("")
-
-    # Drop internal columns
-    drop = [
-        "scrutiny_flag", "scrutiny_category", "scrutiny_reason",
-        "ml_anomaly_flag", "ml_anomaly_score",
-    ]
-    out = out.drop(columns=[c for c in drop if c in out.columns])
-
-    # Write — plain pandas, no openpyxl styling
+    # Write with a header filter so Excel's built-in search works per column.
     buf = io.BytesIO()
-    out.to_excel(buf, index=False, engine="openpyxl")
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        out.to_excel(writer, index=False, sheet_name="Scrutiny Report")
+        ws = writer.sheets["Scrutiny Report"]
+
+        # Header styling for readability.
+        header_font = Font(bold=True)
+        header_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        for cell in ws[1]:
+            cell.font = header_font
+            cell.alignment = header_alignment
+
+        # Slightly taller header row to avoid clipping for wrapped names.
+        ws.row_dimensions[1].height = 30
+
+        # Auto-fit each column width from header and cell contents.
+        for idx, col_name in enumerate(out.columns, start=1):
+            col_letter = get_column_letter(idx)
+            max_len = len(str(col_name))
+
+            for value in out.iloc[:, idx - 1]:
+                if pd.isna(value):
+                    continue
+                max_len = max(max_len, len(str(value)))
+
+            # Add breathing room and keep a practical cap for very long text columns.
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
+
+        ws.auto_filter.ref = ws.dimensions
+        ws.freeze_panes = "A2"
     buf.seek(0)
     result = buf.read()
 
