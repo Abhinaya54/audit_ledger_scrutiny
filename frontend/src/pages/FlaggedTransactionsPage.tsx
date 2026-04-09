@@ -205,6 +205,18 @@ export default function FlaggedTransactionsPage({
     setRenameValue('');
   };
 
+  const deleteSheet = (tabId: string) => {
+    if (sheetTabs.length <= 1) {
+      alert('Cannot delete the last sheet');
+      return;
+    }
+    const newTabs = sheetTabs.filter((t) => t.id !== tabId);
+    setSheetTabs(newTabs);
+    if (activeSheet === tabId) {
+      setActiveSheet(newTabs[0].id);
+    }
+  };
+
   const summaryRows = useMemo(() => {
     const counts = new Map<string, number>();
     filteredRows.forEach((row) => {
@@ -422,10 +434,23 @@ export default function FlaggedTransactionsPage({
                 <button
                   type="button"
                   onClick={() => setActiveSheet(tab.id)}
-                  className="text-left"
+                  className="text-left flex items-center justify-between gap-2"
                   title="Double-click to rename"
                 >
-                  {tab.id} ({tab.label})
+                  <span>{tab.id} ({tab.label})</span>
+                  {sheetTabs.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteSheet(tab.id);
+                      }}
+                      className="text-slate-400 hover:text-red-600 hover:bg-red-50 rounded px-1"
+                      title="Delete sheet"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </button>
               )}
             </div>
