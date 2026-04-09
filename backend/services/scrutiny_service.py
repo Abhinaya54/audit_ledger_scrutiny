@@ -24,8 +24,8 @@ def _build_export_dataframe(raw_df: pd.DataFrame, analyzed_df: pd.DataFrame) -> 
     export_df = raw_df.copy().reset_index(drop=True)
     analyzed = analyzed_df.reset_index(drop=True)
 
-    export_df["Scrutiny Category"] = analyzed["scrutiny_category"].fillna("")
-    export_df["Scrutiny Reason"] = analyzed["scrutiny_reason"].fillna("")
+    export_df["Anomaly_Type"] = analyzed["scrutiny_category"].fillna("")
+    export_df["Reason"] = analyzed["scrutiny_reason"].fillna("")
 
     return export_df
 
@@ -96,8 +96,17 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
     }
 
     export_df = _build_export_dataframe(raw_df, df)
+    review_df = export_df[export_df["Anomaly_Type"].fillna("").astype(str).str.strip() != ""].copy()
+    review_df = review_df.fillna("")
 
-    return export_df, {"summary": summary, "category_counts": category_counts, "flagged_rows": flagged_rows}
+    review_rows = review_df.to_dict(orient="records")
+
+    return export_df, {
+        "summary": summary,
+        "category_counts": category_counts,
+        "flagged_rows": flagged_rows,
+        "review_rows": review_rows,
+    }
 
 
 def generate_report(df: pd.DataFrame) -> bytes:

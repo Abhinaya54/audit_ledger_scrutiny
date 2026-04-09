@@ -1,9 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { analyzeFile, exportReport } from '../../api/scrutinyApi';
 import { triggerDownload } from '../../utils/format';
-import { defaultFilters, applyFilters, getSeverity } from '../scrutiny/LiveFilters';
-import type { FilterState } from '../scrutiny/LiveFilters';
-import type { ScrutinyResponse, FlaggedRow, DisplayRow } from '../../types/scrutiny';
+import type { ScrutinyResponse } from '../../types/scrutiny';
 import DashboardPage from '../../pages/DashboardPage';
 import UploadPage from '../../pages/UploadPage';
 import FlaggedTransactionsPage from '../../pages/FlaggedTransactionsPage';
@@ -257,24 +255,13 @@ export default function AppShell() {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<ScrutinyResponse | null>(null);
-  const [filters, setFilters] = useState<FilterState>(defaultFilters());
   const [darkMode, setDarkMode] = useState(false);
   const [estimatedEntries, setEstimatedEntries] = useState<number | null>(null);
+  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   const contamination = SENSITIVITY_STEPS[sensitivityStep].value;
 
-  const filteredRows = useMemo(() => {
-    if (!results) return [];
-    return applyFilters(results.flagged_rows, filters);
-  }, [results, filters]);
-
-  const displayRows: DisplayRow[] = useMemo(
-    () =>
-      filteredRows.map(
-        (row: FlaggedRow): DisplayRow => ({ ...row, severity: getSeverity(row.scrutiny_category) }),
-      ),
-    [filteredRows],
-  );
+  const reviewRows = useMemo(() => results?.review_rows ?? [], [results]);
 
   const handleAnalyze = async () => {
     if (!file) return;
@@ -284,7 +271,7 @@ export default function AppShell() {
     setLoading(true);
     setError(null);
     setResults(null);
-    setFilters(defaultFilters());
+    setApprovalStatus('pending');
     try {
       const data = await analyzeFile(file, true, contamination);
       setResults(data);
@@ -299,9 +286,14 @@ export default function AppShell() {
 
   const handleExport = async () => {
     if (!file) return;
+    if (approvalStatus !== 'approved') {
+      setError('Audit review is pending. Approve suspicious transactions before downloading the report.');
+      return;
+    }
+
     setExporting(true);
     try {
-      const blob = await exportReport(file, true, contamination);
+      const blob = await exportReport(file, true, contamination, true);
       triggerDownload(blob, 'audit_report.xlsx');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Export failed');
@@ -483,13 +475,13 @@ export default function AppShell() {
             {page === 'results' && (
               <FlaggedTransactionsPage
                 results={results}
-                rows={displayRows}
-                filters={filters}
+                reviewRows={reviewRows}
                 exporting={exporting}
-                onFiltersChange={setFilters}
+                approvalStatus={approvalStatus}
+                onApprove={() => setApprovalStatus('approved')}
+                onReject={() => setApprovalStatus('rejected')}
                 onExport={handleExport}
                 onUploadClick={() => setPage('upload')}
-                onInsightsClick={() => setPage('insights')}
               />
             )}
             {page === 'insights' && (

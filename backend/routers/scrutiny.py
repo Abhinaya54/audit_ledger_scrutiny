@@ -37,7 +37,15 @@ async def export_report(
     file: UploadFile = File(...),
     use_ml: bool = Form(True),
     contamination: float = Form(0.05),
+    approved: bool = Form(False),
 ):
+    if not approved:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": "Audit review is pending. Approve suspicious transactions before export."},
+            headers=CORS_HEADERS,
+        )
+
     tmp_path = await save_upload(file)
     try:
         df, _ = run_analysis(tmp_path, use_ml, contamination)
