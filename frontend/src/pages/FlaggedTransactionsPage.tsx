@@ -24,6 +24,55 @@ function toText(value: unknown): string {
   return String(value);
 }
 
+function ExcelGrid() {
+  const rows = 30;
+  const cols = 26;
+
+  const getColumnLetter = (index: number): string => {
+    let label = '';
+    let n = index + 1;
+    while (n > 0) {
+      n--;
+      label = String.fromCharCode(65 + (n % 26)) + label;
+      n = Math.floor(n / 26);
+    }
+    return label;
+  };
+
+  return (
+    <table className="w-full border-collapse text-xs bg-white">
+      <thead>
+        <tr>
+          <th className="w-12 h-6 bg-slate-100 border border-slate-300 text-slate-500 font-normal text-center text-[10px]" />
+          {Array.from({ length: cols }).map((_, i) => (
+            <th
+              key={`col-${i}`}
+              className="w-24 h-6 bg-slate-100 border border-slate-300 text-slate-600 font-semibold text-center text-xs"
+            >
+              {getColumnLetter(i)}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: rows }).map((_, rowIdx) => (
+          <tr key={`row-${rowIdx}`}>
+            <td className="w-12 bg-slate-100 border border-slate-300 text-slate-600 font-semibold text-center text-xs">
+              {rowIdx + 1}
+            </td>
+            {Array.from({ length: cols }).map((_, colIdx) => (
+              <td
+                key={`cell-${rowIdx}-${colIdx}`}
+                className="w-24 h-6 border border-slate-200 bg-white hover:bg-blue-50 text-slate-700 px-1 py-0.5 cursor-cell"
+              />
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function splitCategories(value: unknown): string[] {
   return toText(value)
     .split(',')
@@ -336,11 +385,8 @@ export default function FlaggedTransactionsPage({
             </table>
           </div>
         ) : (
-          <div className="flex min-h-[240px] items-center justify-center px-6 py-10 text-center text-slate-500">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">{activeSheet}</p>
-              <p className="mt-1 text-xs">New sheet created. Data can be added here later.</p>
-            </div>
+          <div className="overflow-auto max-h-[68vh]">
+            <ExcelGrid />
           </div>
         )}
 
