@@ -19,12 +19,12 @@ export async function analyzeFile(
 
 export async function exportReport(
   file: File,
-  _useMl: boolean,
+  useMl: boolean,
   contamination: number,
 ): Promise<Blob> {
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('use_ml', 'false');   // skip ML for export — avoids OOM on free tier
+  formData.append('use_ml', String(useMl));
   formData.append('contamination', String(contamination));
 
   return apiDownload('/api/scrutiny/export', {

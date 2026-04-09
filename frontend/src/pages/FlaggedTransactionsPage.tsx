@@ -87,6 +87,7 @@ export default function FlaggedTransactionsPage({
 }: Props) {
   const [showHighOnly, setShowHighOnly] = useState(false);
   const [sortByRisk, setSortByRisk] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   if (!results) return <EmptyState onUploadClick={onUploadClick} />;
 
@@ -96,10 +97,27 @@ export default function FlaggedTransactionsPage({
   );
 
   const displayed = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
     let list = showHighOnly ? enriched.filter((r) => r._riskScore >= 75) : enriched;
+    if (q) {
+      list = list.filter((r) =>
+        [
+          r.voucher_no,
+          r.date,
+          r.ledger_name,
+          r.narration,
+          r.scrutiny_category,
+          r.scrutiny_reason,
+          String(r.amount),
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(q),
+      );
+    }
     if (sortByRisk) list = [...list].sort((a, b) => b._riskScore - a._riskScore);
     return list;
-  }, [enriched, showHighOnly, sortByRisk]);
+  }, [enriched, showHighOnly, sortByRisk, searchTerm]);
 
   /* Severity breakdown for pie */
   const severityCounts = useMemo(() => {
@@ -209,6 +227,29 @@ export default function FlaggedTransactionsPage({
               {activeFilters} filter{activeFilters > 1 ? 's' : ''} active
             </span>
           )}
+        </div>
+
+        <div className="relative w-full max-w-xs">
+          <svg
+            className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 6.15 6.15a7.5 7.5 0 0 0 10.5 10.5Z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search detections"
+            className="w-full rounded-lg border border-slate-300 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-700 focus:border-teal-500 focus:outline-none"
+          />
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
