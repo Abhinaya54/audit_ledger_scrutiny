@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import scrutiny, generator
+from routers import scrutiny, generator, auth
 
 app = FastAPI(title="Audit Anomaly Detection API", version="1.0.0")
 
@@ -26,3 +26,4 @@ app.add_middleware(
 
 app.include_router(scrutiny.router, prefix="/api/scrutiny", tags=["Scrutiny"])
 app.include_router(generator.router, prefix="/api/generator", tags=["Generator"])
+app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])

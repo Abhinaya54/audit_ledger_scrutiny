@@ -76,4 +76,9 @@ Outputs
 Notes and next steps
 - This repository contains some non-source documents (PDF/DOCX) in `audit/`.
   They are ignored by the repo's `.gitignore` and will not be pushed.
+
+Backend auth environment variables
+- `MONGO_URI`: MongoDB Atlas connection string.
+- `MONGO_DB_NAME`: Database name for auth users (default: `auditdb`).
+- `JWT_SECRET_KEY`: Secret used to sign login tokens.
 -

@@ -1,24 +1,47 @@
 import { useMemo, useState } from 'react';
 
 interface LoginScreenProps {
-  onLogin: (name: string) => void;
+  onLogin: (email: string, password: string) => Promise<void>;
+  onSignup: (name: string, email: string, password: string) => Promise<void>;
 }
 
-export default function LoginScreen({ onLogin }: LoginScreenProps) {
+export default function LoginScreen({ onLogin, onSignup }: LoginScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const canSubmit = useMemo(() => name.trim().length >= 2 && password.length >= 4, [name, password]);
+  const canSubmit = useMemo(() => {
+    const hasEmail = email.trim().includes('@');
+    const hasPassword = password.length >= 8;
+    if (mode === 'signup') {
+      return name.trim().length >= 2 && hasEmail && hasPassword;
+    }
+    return hasEmail && hasPassword;
+  }, [mode, name, email, password]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) {
-      setError('Enter a valid name and password.');
+      setError('Fill valid details. Password must be at least 8 characters.');
       return;
     }
-    setError(null);
-    onLogin(name.trim());
+
+    setLoading(true);
+    try {
+      setError(null);
+      if (mode === 'signup') {
+        await onSignup(name.trim(), email.trim(), password);
+      } else {
+        await onLogin(email.trim(), password);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,16 +74,62 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         <section className="p-8 sm:p-10">
           <div className="max-w-sm mx-auto w-full">
             <p className="text-xs font-bold tracking-[0.2em] uppercase text-teal-700/70">Login</p>
-            <h2 className="text-2xl font-black text-slate-900 mt-2">Welcome back</h2>
-            <p className="text-sm text-slate-500 mt-2">Use any username/password for this workspace login gate.</p>
+            <h2 className="text-2xl font-black text-slate-900 mt-2">
+              {mode === 'signup' ? 'Create account' : 'Welcome back'}
+            </h2>
+            <p className="text-sm text-slate-500 mt-2">
+              {mode === 'signup'
+                ? 'Sign up once, then login using your registered credentials.'
+                : 'Login with your registered email and password.'}
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 bg-slate-100 rounded-lg p-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('login');
+                  setError(null);
+                }}
+                className={`py-2 rounded-md transition-colors ${
+                  mode === 'login' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signup');
+                  setError(null);
+                }}
+                className={`py-2 rounded-md transition-colors ${
+                  mode === 'signup' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'
+                }`}
+              >
+                Signup
+              </button>
+            </div>
 
             <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+              {mode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5">Name</label>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Abhin"
+                    className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600"
+                  />
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5">Analyst Name</label>
+                <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5">Email</label>
                 <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Abhin"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@company.com"
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600"
                 />
               </div>
@@ -71,7 +140,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Minimum 4 characters"
+                  placeholder="Minimum 8 characters"
                   className="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-600"
                 />
               </div>
@@ -84,9 +153,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="w-full rounded-xl bg-[#0F766E] hover:bg-[#115E59] transition-colors text-white font-bold py-2.5"
               >
-                Sign In
+                {loading ? 'Please wait...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
               </button>
             </form>
           </div>
