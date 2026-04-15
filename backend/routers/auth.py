@@ -29,7 +29,12 @@ def signup(payload: SignupRequest):
     try:
         user = create_user(payload.name, payload.email, payload.password)
     except AuthError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        detail = str(exc)
+        if "already exists" in detail:
+            raise HTTPException(status_code=400, detail=detail) from exc
+        if "Database" in detail or "database" in detail or "MongoDB" in detail:
+            raise HTTPException(status_code=503, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
 
     public = to_public_user(user)
     token = create_access_token(public["id"], public["email"])
@@ -41,7 +46,10 @@ def login(payload: LoginRequest):
     try:
         user = authenticate_user(payload.email, payload.password)
     except AuthError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
+        detail = str(exc)
+        if "Database" in detail or "database" in detail or "MongoDB" in detail:
+            raise HTTPException(status_code=503, detail=detail) from exc
+        raise HTTPException(status_code=401, detail=detail) from exc
 
     public = to_public_user(user)
     token = create_access_token(public["id"], public["email"])

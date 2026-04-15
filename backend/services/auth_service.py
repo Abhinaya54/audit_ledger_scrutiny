@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, PyMongoError, ServerSelectionTimeoutError
 
 
 MONGO_URI = os.environ.get("MONGO_URI", "")
@@ -32,19 +32,28 @@ def _get_db():
     if not MONGO_URI:
         raise AuthError("MONGO_URI is not configured on the server.")
 
-    # Render backend is a long-running web process; keep a moderate pre-warmed pool.
-    _client = MongoClient(
-        MONGO_URI,
-        maxPoolSize=20,
-        minPoolSize=2,
-        maxIdleTimeMS=300000,
-        connectTimeoutMS=10000,
-        serverSelectionTimeoutMS=5000,
-        socketTimeoutMS=20000,
-    )
-    _db = _client[MONGO_DB_NAME]
-    _db.users.create_index("email", unique=True)
-    return _db
+    try:
+        # Render backend is a long-running web process; keep a moderate pre-warmed pool.
+        _client = MongoClient(
+            MONGO_URI,
+            maxPoolSize=20,
+            minPoolSize=2,
+            maxIdleTimeMS=300000,
+            connectTimeoutMS=10000,
+            serverSelectionTimeoutMS=5000,
+            socketTimeoutMS=20000,
+        )
+        _db = _client[MONGO_DB_NAME]
+        # Ping forces an early connectivity/auth check so failures are explicit.
+        _db.command("ping")
+        _db.users.create_index("email", unique=True)
+        return _db
+    except ServerSelectionTimeoutError as exc:
+        raise AuthError(
+            "Database is unreachable. Check MONGO_URI and Atlas IP allowlist/network settings."
+        ) from exc
+    except PyMongoError as exc:
+        raise AuthError("Database connection failed. Check MongoDB credentials and URI.") from exc
 
 
 def _users_collection():
@@ -87,6 +96,8 @@ def create_user(name: str, email: str, password: str) -> Dict[str, Any]:
         result = users.insert_one(doc)
     except DuplicateKeyError as exc:
         raise AuthError("An account with this email already exists.") from exc
+    except PyMongoError as exc:
+        raise AuthError("Unable to save user. Database operation failed.") from exc
 
     doc["_id"] = result.inserted_id
     return doc
@@ -94,7 +105,11 @@ def create_user(name: str, email: str, password: str) -> Dict[str, Any]:
 
 def authenticate_user(email: str, password: str) -> Dict[str, Any]:
     users = _users_collection()
-    user = users.find_one({"email": _normalise_email(email)})
+    try:
+        user = users.find_one({"email": _normalise_email(email)})
+    except PyMongoError as exc:
+        raise AuthError("Unable to verify login. Database operation failed.") from exc
+
     if not user or not verify_password(password, user.get("password_hash", "")):
         raise AuthError("Invalid email or password.")
     return user
@@ -102,7 +117,10 @@ def authenticate_user(email: str, password: str) -> Dict[str, Any]:
 
 def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     users = _users_collection()
-    return users.find_one({"_id": _coerce_object_id(user_id)})
+    try:
+        return users.find_one({"_id": _coerce_object_id(user_id)})
+    except PyMongoError as exc:
+        raise AuthError("Unable to fetch user profile. Database operation failed.") from exc
 
 
 def _coerce_object_id(value: str):
