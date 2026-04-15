@@ -68,6 +68,36 @@ class SchemaError(Exception):
     pass
 
 
+def preview_schema_mapping(filepath: str) -> dict:
+    """Return how uploaded columns map to the canonical scrutiny schema."""
+    if filepath.endswith(".xlsx") or filepath.endswith(".xls"):
+        df = pd.read_excel(filepath, dtype=str)
+    elif filepath.endswith(".csv"):
+        df = pd.read_csv(filepath, dtype=str)
+    else:
+        raise SchemaError("Unsupported file format. Please upload a .csv or .xlsx file.")
+
+    if df.empty:
+        raise SchemaError("Uploaded file is empty. Please upload a valid GL file.")
+
+    original_columns = [str(c) for c in df.columns]
+    normalised_columns = [_normalise_column_name(c) for c in original_columns]
+
+    mapping = _detect_schema_mapping(normalised_columns)
+    missing_required = [
+        item["canonical"]
+        for item in mapping
+        if item["required"] and item["status"] == "missing"
+    ]
+
+    return {
+        "original_columns": original_columns,
+        "normalised_columns": normalised_columns,
+        "mappings": mapping,
+        "missing_required": missing_required,
+    }
+
+
 def ingest(filepath: str) -> pd.DataFrame:
     """
     Load and validate a GL file (.csv or .xlsx).
@@ -174,6 +204,64 @@ def _map_to_canonical_schema(df: pd.DataFrame) -> pd.DataFrame:
             mapped["amount"] = amount
 
     return mapped
+
+
+def _detect_schema_mapping(normalised_columns: list[str]) -> list[dict]:
+    available = set(normalised_columns)
+    result = []
+
+    for canonical in ["date", "ledger_name", "amount", "narration", "voucher_type"]:
+        required = canonical in REQUIRED_COLUMNS
+
+        if canonical != "amount":
+            source = _first_existing_column(available, COLUMN_ALIASES[canonical])
+            status = "mapped" if source else ("missing" if required else "defaulted")
+            result.append(
+                {
+                    "canonical": canonical,
+                    "source_column": source,
+                    "required": required,
+                    "status": status,
+                }
+            )
+            continue
+
+        amount_source = _first_existing_column(available, COLUMN_ALIASES["amount"])
+        if amount_source:
+            result.append(
+                {
+                    "canonical": "amount",
+                    "source_column": amount_source,
+                    "required": True,
+                    "status": "mapped",
+                }
+            )
+            continue
+
+        debit_source = _first_existing_column(available, DEBIT_ALIASES)
+        credit_source = _first_existing_column(available, CREDIT_ALIASES)
+
+        if debit_source or credit_source:
+            derived_sources = [value for value in [debit_source, credit_source] if value]
+            result.append(
+                {
+                    "canonical": "amount",
+                    "source_column": " + ".join(derived_sources),
+                    "required": True,
+                    "status": "derived",
+                }
+            )
+        else:
+            result.append(
+                {
+                    "canonical": "amount",
+                    "source_column": None,
+                    "required": True,
+                    "status": "missing",
+                }
+            )
+
+    return result
 
 
 def _parse_dates(series: pd.Series) -> pd.Series:

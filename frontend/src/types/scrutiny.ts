@@ -35,4 +35,20 @@ export interface ScrutinyResponse {
   review_rows: Record<string, unknown>[];
 }
 
+export type MappingStatus = 'mapped' | 'derived' | 'missing' | 'defaulted';
+
+export interface CanonicalMapping {
+  canonical: string;
+  source_column: string | null;
+  required: boolean;
+  status: MappingStatus;
+}
+
+export interface SchemaPreviewResponse {
+  original_columns: string[];
+  normalised_columns: string[];
+  mappings: CanonicalMapping[];
+  missing_required: string[];
+}
+
 export type DisplayRow = FlaggedRow & { severity: 'High' | 'Medium' | 'Low' };

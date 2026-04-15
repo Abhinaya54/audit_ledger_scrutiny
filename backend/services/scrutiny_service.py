@@ -3,7 +3,7 @@ import tempfile
 import pandas as pd
 from fastapi import UploadFile
 
-from scrutiny.ingestor import ingest, SchemaError
+from scrutiny.ingestor import ingest, SchemaError, preview_schema_mapping
 from scrutiny.engine import run_all_rules
 from scrutiny.ml.model import train, predict
 from scrutiny.exporter import export
@@ -111,3 +111,7 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
 
 def generate_report(df: pd.DataFrame) -> bytes:
     return export(df)
+
+
+def preview_mapping(tmp_path: str) -> dict:
+    return preview_schema_mapping(tmp_path)

@@ -3,7 +3,7 @@ import traceback
 from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import Response, JSONResponse
 
-from services.scrutiny_service import save_upload, run_analysis, generate_report
+from services.scrutiny_service import save_upload, run_analysis, generate_report, preview_mapping
 from scrutiny.ingestor import SchemaError
 
 router = APIRouter()
@@ -21,6 +21,22 @@ async def analyze(
     try:
         df, result = run_analysis(tmp_path, use_ml, contamination)
         return result
+    except SchemaError as e:
+        return JSONResponse(status_code=400, content={"detail": str(e)}, headers=CORS_HEADERS)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)}, headers=CORS_HEADERS)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
+
+
+@router.post("/schema-preview")
+async def schema_preview(file: UploadFile = File(...)):
+    tmp_path = await save_upload(file)
+    try:
+        return preview_mapping(tmp_path)
     except SchemaError as e:
         return JSONResponse(status_code=400, content={"detail": str(e)}, headers=CORS_HEADERS)
     except Exception as e:

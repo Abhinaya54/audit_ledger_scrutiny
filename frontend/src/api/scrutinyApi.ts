@@ -1,5 +1,5 @@
 import { apiFetch, apiDownload } from './client';
-import type { ScrutinyResponse } from '../types/scrutiny';
+import type { SchemaPreviewResponse, ScrutinyResponse } from '../types/scrutiny';
 
 export async function analyzeFile(
   file: File,
@@ -30,6 +30,16 @@ export async function exportReport(
   formData.append('approved', String(approved));
 
   return apiDownload('/api/scrutiny/export', {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function previewSchema(file: File): Promise<SchemaPreviewResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return apiFetch<SchemaPreviewResponse>('/api/scrutiny/schema-preview', {
     method: 'POST',
     body: formData,
   });
