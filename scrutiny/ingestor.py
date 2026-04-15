@@ -4,9 +4,58 @@
 # Returns a clean DataFrame ready for the detection engine.
 
 import pandas as pd
+import re
+from typing import Optional
 
 
-MANDATORY_COLUMNS = ["date", "ledger_name", "amount", "narration", "voucher_type"]
+REQUIRED_COLUMNS = ["date", "ledger_name", "amount"]
+OPTIONAL_COLUMNS = ["narration", "voucher_type"]
+
+COLUMN_ALIASES = {
+    "date": [
+        "date",
+        "voucher_date",
+        "vch_date",
+        "transaction_date",
+        "entry_date",
+        "posting_date",
+    ],
+    "ledger_name": [
+        "ledger_name",
+        "particulars",
+        "account",
+        "account_name",
+        "ledger",
+        "ledger_account",
+        "name_of_ledger",
+    ],
+    "narration": [
+        "narration",
+        "remarks",
+        "remark",
+        "description",
+        "particular_narration",
+        "notes",
+    ],
+    "voucher_type": [
+        "voucher_type",
+        "vch_type",
+        "voucher",
+        "voucher_category",
+        "transaction_type",
+        "type",
+    ],
+    "amount": [
+        "amount",
+        "amt",
+        "value",
+        "transaction_amount",
+        "gross_amount",
+    ],
+}
+
+DEBIT_ALIASES = ["debit", "dr", "dr_amount", "debit_amount", "debit_amt"]
+CREDIT_ALIASES = ["credit", "cr", "cr_amount", "credit_amount", "credit_amt"]
 
 DATE_FORMATS = [
     "%d/%m/%Y", "%Y-%m-%d", "%m/%d/%Y",
@@ -43,15 +92,22 @@ def ingest(filepath: str) -> pd.DataFrame:
     if df.empty:
         raise SchemaError("Uploaded file is empty. Please upload a valid GL file.")
 
-    # ── Normalise column names (lowercase, strip spaces) ─────────────────────
-    df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+    # ── Normalise column names (lowercase, strip spaces/symbols) ─────────────
+    df.columns = [_normalise_column_name(c) for c in df.columns]
 
-    # ── Check mandatory columns ───────────────────────────────────────────────
-    missing = [c for c in MANDATORY_COLUMNS if c not in df.columns]
+    # ── Map source columns (including Tally exports) to canonical schema ─────
+    df = _map_to_canonical_schema(df)
+
+    # ── Check required columns ────────────────────────────────────────────────
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
         raise SchemaError(
             f"Required column(s) missing from the uploaded file: {', '.join(missing)}"
         )
+
+    for col in OPTIONAL_COLUMNS:
+        if col not in df.columns:
+            df[col] = ""
 
     # ── Parse dates ───────────────────────────────────────────────────────────
     df["date"] = _parse_dates(df["date"])
@@ -73,6 +129,51 @@ def ingest(filepath: str) -> pd.DataFrame:
     df["voucher_type"] = df["voucher_type"].fillna("").str.strip()
 
     return df.reset_index(drop=True)
+
+
+def _normalise_column_name(value: str) -> str:
+    normalised = re.sub(r"[^a-zA-Z0-9]+", "_", value.strip().lower())
+    normalised = re.sub(r"_+", "_", normalised).strip("_")
+    return normalised
+
+
+def _first_existing_column(columns: set[str], candidates: list[str]) -> Optional[str]:
+    for item in candidates:
+        if item in columns:
+            return item
+    return None
+
+
+def _map_to_canonical_schema(df: pd.DataFrame) -> pd.DataFrame:
+    mapped = df.copy()
+    available = set(mapped.columns)
+
+    for canonical in ["date", "ledger_name", "narration", "voucher_type"]:
+        source = _first_existing_column(available, COLUMN_ALIASES[canonical])
+        if source and canonical not in mapped.columns:
+            mapped[canonical] = mapped[source]
+
+    amount_source = _first_existing_column(available, COLUMN_ALIASES["amount"])
+    if amount_source and "amount" not in mapped.columns:
+        mapped["amount"] = mapped[amount_source]
+
+    if "amount" not in mapped.columns:
+        debit_source = _first_existing_column(available, DEBIT_ALIASES)
+        credit_source = _first_existing_column(available, CREDIT_ALIASES)
+
+        if debit_source or credit_source:
+            debit = _parse_optional_amounts(
+                mapped[debit_source] if debit_source else pd.Series(["" for _ in range(len(mapped))])
+            )
+            credit = _parse_optional_amounts(
+                mapped[credit_source] if credit_source else pd.Series(["" for _ in range(len(mapped))])
+            )
+
+            amount = debit.fillna(0).abs() + credit.fillna(0).abs()
+            amount[(debit.isna()) & (credit.isna())] = pd.NA
+            mapped["amount"] = amount
+
+    return mapped
 
 
 def _parse_dates(series: pd.Series) -> pd.Series:
@@ -111,19 +212,7 @@ def _parse_amounts(series: pd.Series) -> pd.Series:
     - Debit/Credit suffix: '45000 Dr', '45000 Cr'
     - Negative for credits: '-45000'
     """
-    series = series.str.strip()
-
-    # Remove commas and currency symbols
-    series = series.str.replace(",", "", regex=False)
-    series = series.str.replace("₹", "", regex=False)
-    series = series.str.replace("Rs", "", regex=False)
-    series = series.str.replace("INR", "", regex=False)
-
-    # Strip Dr/Cr suffix — keep the number as positive
-    series = series.str.replace(r"\s*(Dr|CR|dr|cr|Cr|CR)\s*$", "", regex=True)
-    series = series.str.strip()
-
-    numeric = pd.to_numeric(series, errors="coerce")
+    numeric = _parse_optional_amounts(series)
     bad = numeric.isna().sum()
     if bad > 0:
         raise SchemaError(
@@ -131,3 +220,30 @@ def _parse_amounts(series: pd.Series) -> pd.Series:
             f"Please ensure all amounts are numbers."
         )
     return numeric.abs()   # treat all as positive magnitudes
+
+
+def _parse_optional_amounts(series: pd.Series) -> pd.Series:
+    cleaned = series.fillna("").astype(str).str.strip()
+
+    # Remove commas and common currency markers.
+    cleaned = cleaned.str.replace(",", "", regex=False)
+    cleaned = cleaned.str.replace("₹", "", regex=False)
+    cleaned = cleaned.str.replace("Rs", "", regex=False)
+    cleaned = cleaned.str.replace("INR", "", regex=False)
+
+    # Strip Dr/Cr suffix while preserving absolute value in ingestion.
+    cleaned = cleaned.str.replace(r"\s*(Dr|CR|dr|cr|Cr)\s*$", "", regex=True)
+
+    # Handle accounting-style negatives written as (1000).
+    cleaned = cleaned.str.replace(r"^\((.*)\)$", r"-\1", regex=True)
+
+    blank = cleaned.eq("")
+    numeric = pd.to_numeric(cleaned.mask(blank, pd.NA), errors="coerce")
+
+    invalid = (~blank) & numeric.isna()
+    if invalid.any():
+        raise SchemaError(
+            f"Found {int(invalid.sum())} invalid amount value(s) in amount/debit/credit columns."
+        )
+
+    return numeric

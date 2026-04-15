@@ -3,11 +3,12 @@ import { analyzeFile, exportReport } from '../../api/scrutinyApi';
 import { triggerDownload } from '../../utils/format';
 import type { ScrutinyResponse } from '../../types/scrutiny';
 import DashboardPage from '../../pages/DashboardPage';
+import ClientDashboardPage from '../../pages/ClientDashboardPage';
 import UploadPage from '../../pages/UploadPage';
 import FlaggedTransactionsPage from '../../pages/FlaggedTransactionsPage';
 import AuditReportPage from '../../pages/AuditReportPage';
 
-export type Page = 'dashboard' | 'upload' | 'results' | 'insights';
+export type Page = 'dashboard' | 'clients' | 'upload' | 'results' | 'insights';
 
 /* ─── Sensitivity mapping ─────────────────────────────────────────── */
 export const SENSITIVITY_STEPS = [
@@ -26,6 +27,15 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode; workflow?: bo
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zm0 9.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zm9.75-9.75A2.25 2.25 0 0115.75 3.75H18a2.25 2.25 0 012.25 2.25v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zm0 9.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'clients',
+    label: 'Clients',
+    icon: (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a8.94 8.94 0 003.75-1.37A17.93 17.93 0 0012 15c-3.18 0-6.168.824-8.75 2.27A8.94 8.94 0 006 18.72m12 0a9 9 0 11-12 0m12 0a9 9 0 00-12 0m9-10.5a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
     ),
   },
@@ -232,6 +242,10 @@ const PAGE_INFO: Record<Page, { title: string; subtitle: string }> = {
     title: 'Audit Overview',
     subtitle: 'Monitor audit results, risk indicators, and anomaly trends',
   },
+  clients: {
+    title: 'Client Dashboard',
+    subtitle: 'Store and manage client data across audit engagements',
+  },
   upload: {
     title: 'Upload & Analyze',
     subtitle: 'Upload your General Ledger file and configure analysis settings',
@@ -247,7 +261,7 @@ const PAGE_INFO: Record<Page, { title: string; subtitle: string }> = {
 };
 
 /* ─── Main component ──────────────────────────────────────────────── */
-export default function AppShell() {
+export default function AppShell({ currentUser, onLogout }: { currentUser: string; onLogout: () => void }) {
   const [page, setPage] = useState<Page>('dashboard');
   const [file, setFile] = useState<File | null>(null);
   const [sensitivityStep, setSensitivityStep] = useState(2); // index into SENSITIVITY_STEPS
@@ -380,12 +394,21 @@ export default function AppShell() {
             {/* User + dark mode */}
             <div className="flex items-center gap-2 px-1">
               <div className="w-7 h-7 rounded-lg bg-[#0F766E]/20 border border-teal-400/30 flex items-center justify-center text-teal-300 text-xs font-bold flex-shrink-0">
-                A
+                {currentUser.slice(0, 1).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-medium truncate">Auditor</p>
-                <p className="text-slate-500 text-[10px] truncate">Senior Analyst</p>
+                <p className="text-white text-xs font-medium truncate">{currentUser}</p>
+                <p className="text-slate-500 text-[10px] truncate">Audit Workspace</p>
               </div>
+              <button
+                onClick={onLogout}
+                title="Logout"
+                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-colors flex-shrink-0"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15m-3 0l3-3m0 0l-3-3m3 3H9" />
+                </svg>
+              </button>
               <button
                 onClick={() => setDarkMode(!darkMode)}
                 title="Toggle theme"
@@ -462,6 +485,7 @@ export default function AppShell() {
                 onResultsClick={() => setPage('results')}
               />
             )}
+            {page === 'clients' && <ClientDashboardPage />}
             {page === 'upload' && (
               <UploadPage
                 file={file}
