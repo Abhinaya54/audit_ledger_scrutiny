@@ -1,84 +1,147 @@
-# Ledger Scrutiny Assistant
+# Ledger Scrutiny
 
-Small audit toolkit: synthetic General Ledger (GL) data generator, rule-based
-scrutiny engine (R1–R6), and an Isolation Forest ML detector. Use the CLI
-tools or the Streamlit UI to generate data, run detections and export an
-Excel scrutiny report.
+Ledger Scrutiny is a full-stack audit application for General Ledger review.
+It provides:
 
-**Prerequisites**
-- Python 3.9+ (tested on 3.10)
-- Install dependencies:
+- GL upload and ingestion
+- Dynamic column detection for messy real-world headers
+- Rule-based and ML-assisted anomaly detection
+- Workbook-based review workflow
+- Investigation and documentation workspace
+- Report export support
 
-```
-pip install -r audit/requirements.txt
-```
+## Project Layout
 
-Files of interest:
-- `generate.py` — CLI entry for synthetic GL data generation.
-- `pipeline.py` — Master pipeline: ingest GL → run rules + ML → export Excel report.
-- `ui/app.py` — Streamlit web UI (single-page app) for generation and scrutiny.
-- `audit/` — package with generator, scrutiny engine, rules, and models.
+Repository root:
 
-Quick usage
------------
+- `audit/` : application source
 
-1) Generate synthetic GL (CLI)
+Application source:
 
-```
-python audit/generate.py --period Q1 --rows 50000 --seed 42
+- `audit/backend/` : FastAPI backend
+- `audit/frontend/` : React + Vite frontend
 
-# Save to custom path:
-python audit/generate.py --start 2024-04-01 --end 2025-03-31 --output data/output/my_gl.csv
-```
+Backend key folders:
 
-Options
-- `--period`: Q1, Q2, Q3, Q4 (resolves to fiscal quarters configured in `generator/config.py`).
-- `--start` / `--end`: custom date range (YYYY-MM-DD).
-- `--rows`: number of rows to generate (default 50,000).
-- `--no-inject`: skip anomaly injection (clean data only).
+- `audit/backend/main.py` : FastAPI app entrypoint
+- `audit/backend/routers/` : API routes (`/api/auth`, `/api/scrutiny`, `/api/workbooks`)
+- `audit/backend/services/` : business/service layer
+- `audit/backend/scrutiny/` : ingestion, rule engine, ML, export
+- `audit/backend/tests/` : pytest tests
 
-2) Run the full pipeline (rules + ML)
+Frontend key folders:
 
-```
-python audit/pipeline.py --input data/output/synthetic_gl.csv --output data/output/scrutiny_report.xlsx
+- `audit/frontend/src/pages/` : page-level UI
+- `audit/frontend/src/components/` : reusable UI components
+- `audit/frontend/src/api/` : backend API clients
+- `audit/frontend/src/types/` : TypeScript models
 
-# Skip ML detection:
-python audit/pipeline.py --input data/output/synthetic_gl.csv --no-ml
-```
+## Prerequisites
 
-The pipeline will validate the input schema, run rule checks (R1–R6), optionally
-train/predict an Isolation Forest to flag statistical outliers, and export an Excel
-report (`.xlsx`) with flagged transactions.
+- Python 3.10+
+- Node.js 18+
+- npm 9+
 
-3) Run the Streamlit UI (recommended for interactive use)
+## Setup
 
-```
-pip install streamlit plotly
-streamlit run audit/ui/app.py
+From repository root (`audit`):
+
+1. Create/activate virtual environment (optional but recommended)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
 
-The app has two tabs: **Scrutiny Engine** (upload a GL file, run rules/ML, download report)
-and **Generate Test Data** (configure and download synthetic GL CSV).
+2. Install backend dependencies
 
-Data schema
------------
-Required columns for ingestion:
-- `date` (YYYY-MM-DD)
+```powershell
+pip install -r audit/backend/requirements.txt
+```
+
+3. Install frontend dependencies
+
+```powershell
+cd audit/frontend
+npm install
+```
+
+## Environment Variables (Backend)
+
+Set these before running backend if you use auth/workbook persistence:
+
+- `MONGO_URI` : MongoDB connection string
+- `MONGO_DB_NAME` : MongoDB database name (default used in code if not set)
+- `JWT_SECRET_KEY` : JWT signing key
+- `ALLOWED_ORIGINS` : optional comma-separated CORS origins (defaults to `*`)
+
+## How to Run
+
+### Run Backend API
+
+```powershell
+cd audit/backend
+python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+API base URL:
+
+- `http://127.0.0.1:8000`
+
+### Run Frontend
+
+Open a second terminal:
+
+```powershell
+cd audit/frontend
+npm run dev
+```
+
+Frontend dev URL:
+
+- `http://127.0.0.1:5173`
+
+## Build and Test
+
+### Frontend build
+
+```powershell
+cd audit/frontend
+npm run build
+```
+
+### Backend tests
+
+```powershell
+cd audit/backend
+python -m pytest -q
+```
+
+## Upload File Requirements
+
+Core required logical fields:
+
+- `date`
 - `ledger_name`
-- `amount` (numeric)
+- `amount` source
+
+Amount source rules:
+
+- Use direct `amount` if detected
+- If `amount` is missing, derive as: `amount = credit - debit`
+- At least one amount source must exist (`amount` OR debit/credit)
+
+Optional fields:
+
 - `narration`
 - `voucher_type`
 
-Outputs
-- Generated CSVs and reports are placed under `data/output/` by default.
-- Saved ML model: `models/iforest.pkl` (when the pipeline runs ML).
+The ingestion system supports normalized matching, synonyms, partial matching,
+and fuzzy fallback for inconsistent headers.
 
-Notes and next steps
-- This repository contains some non-source documents (PDF/DOCX) in `audit/`.
-  They are ignored by the repo's `.gitignore` and will not be pushed.
+## Notes
 
-Backend auth environment variables
-- `MONGO_URI`: MongoDB Atlas connection string.
-- `MONGO_DB_NAME`: Database name for auth users (default: `auditdb`).
-- `JWT_SECRET_KEY`: Secret used to sign login tokens.
--
+- Frontend documentation editor uses Quill.
+- PDF export is handled in frontend using `jspdf`.
+- If you change frontend dependencies and hit Vite optimize cache errors,
+  clear `audit/frontend/node_modules/.vite` and restart `npm run dev`.

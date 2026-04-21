@@ -1,7 +1,0 @@
-{
-  "framework": null,
-  "outputDirectory": "frontend/dist",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
