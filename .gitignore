@@ -8,5 +8,7 @@ __pycache__/
 node_modules/
 dist/
 build/
-*.sqlite3
 *.db
+*.sqlite3
+.pytest_cache/
+.DS_Store
