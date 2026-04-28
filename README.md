@@ -139,6 +139,38 @@ Optional fields:
 The ingestion system supports normalized matching, synonyms, partial matching,
 and fuzzy fallback for inconsistent headers.
 
+## Deployment
+
+### Vercel (Frontend)
+
+1. Connect the GitHub repository `https://github.com/Abhinaya54/audit_ledger_scrutiny` to Vercel.
+2. Vercel will auto-detect `vercel.json` and use:
+   - Build command: `npm run vercel-build`
+   - Output directory: `frontend/dist`
+3. Update the `rewrites.destination` in `vercel.json` to point to your actual Render backend URL once it is deployed.
+4. Deploy.
+
+### Render (Backend)
+
+1. Connect the same GitHub repository to Render.
+2. Use the Blueprint option and select `render.yaml` — Render will auto-provision the web service.
+3. Alternatively, create a manual **Web Service**:
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Root Directory**: `backend`
+4. Set environment variables in the Render dashboard:
+   - `MONGO_URI` — your MongoDB connection string
+   - `MONGO_DB_NAME` — database name
+   - `JWT_SECRET_KEY` — strong random secret for JWT signing
+   - `ALLOWED_ORIGINS` — set to your Vercel frontend domain (or `*` for development)
+5. Deploy.
+
+### Post-Deployment
+
+- Update `vercel.json` → `rewrites[0].destination` with the exact Render backend URL (e.g., `https://<your-service>.onrender.com/api/:path*`).
+- Redeploy Vercel so the frontend proxies API calls to the live backend.
+
 ## Notes
 
 - Frontend documentation editor uses Quill.

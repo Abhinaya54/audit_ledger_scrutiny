@@ -1,14 +1,11 @@
-# Fix Connection & Favicon Issues
+# Deployment Plan — Vercel + Render
 
-## Plan
-- [x] Step 1: Update `frontend/src/api/client.ts` — use relative `/api` base URL + add headers support
-- [x] Step 2: Update `frontend/src/api/authApi.ts` — refactor `getCurrentUser()` to use `apiClient.get()`
-- [x] Step 3: Update `frontend/index.html` — add favicon link to stop 404
-- [x] Step 4: Update `frontend/src/api/workbooksApi.ts` — refactor to use `apiClient`
-- [x] Step 5: Update `frontend/src/api/clientApi.ts` — refactor to use `apiClient`
-- [x] Step 6: Verify no hardcoded `localhost:8000` remains in frontend
+## Steps
+- [x] Step 1: Update Git remote to `https://github.com/Abhinaya54/audit_ledger_scrutiny.git`
+- [x] Step 2: Create `vercel.json` for frontend deployment
+- [x] Step 3: Create `render.yaml` for backend deployment
+- [x] Step 4: Update `backend/main.py` for production (host 0.0.0.0, port from env)
+- [x] Step 5: Verify `.gitignore` covers build artifacts
+- [x] Step 6: Update `README.md` with deployment instructions
+- [ ] Step 7: Commit all changes and push to new repo
 
-## Context
-- `apiClient.ts` hardcodes `http://localhost:8000/api`, bypassing Vite proxy → causes `ERR_CONNECTION_REFUSED`
-- Vite proxy only intercepts relative URLs like `/api/...`
-- `index.html` has no favicon link → browser auto-requests `/favicon.ico` → 404
