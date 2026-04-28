@@ -36,6 +36,158 @@ Frontend key folders:
 - `audit/frontend/src/api/` : backend API clients
 - `audit/frontend/src/types/` : TypeScript models
 
+## File-by-File One-Line Explanation
+
+### Root
+
+- `README.md` : project documentation, setup guide, run instructions, and file map.
+- `package.json` : root npm script for frontend build in deployment workflows.
+- `requirements.txt` : root Python dependency placeholder (legacy/deployment compatibility).
+
+### Backend (`audit/backend`)
+
+- `main.py` : starts FastAPI app, loads env vars, configures CORS, and mounts routers.
+- `pipeline.py` : orchestration utility for analysis pipeline tasks.
+- `requirements.txt` : backend Python package dependencies.
+
+#### Backend Agents (`audit/backend/agents`)
+
+- `__init__.py` : package marker for agent modules.
+- `base_agent.py` : shared base behavior/interface for all backend agents.
+- `detector_agent.py` : anomaly/rule detection execution agent.
+- `orchestrator.py` : coordinates detector, validator, and reporter agent flow.
+- `reporter_agent.py` : prepares consolidated audit findings/report payloads.
+- `validator_agent.py` : validates detected results and schema/business consistency.
+
+#### Backend Routers (`audit/backend/routers`)
+
+- `__init__.py` : package marker for API routers.
+- `auth.py` : authentication endpoints (login/register/token flows).
+- `scrutiny.py` : file analysis, schema preview, and scrutiny export endpoints.
+- `workbooks.py` : workbook lifecycle APIs (create/select/configure/ingest).
+
+#### Backend Rules Engine (`audit/backend/rules_engine`)
+
+- `__init__.py` : package marker for rule modules.
+- `r1_round_amount.py` : flags suspicious round-number transactions.
+- `r2_weekend.py` : flags weekend-posted transactions.
+- `r3_period_end.py` : flags period-end concentration activity.
+- `r4_weak_narration.py` : flags weak/empty narration quality.
+- `r5_duplicate.py` : flags potential duplicate entries.
+- `r6_voucher_type.py` : flags risky voucher type usage patterns.
+
+#### Backend Schemas (`audit/backend/schemas`)
+
+- `__init__.py` : package marker for Pydantic schemas.
+- `auth.py` : auth request/response schema definitions.
+- `scrutiny.py` : scrutiny analysis and preview response schemas.
+- `workbook.py` : workbook and entity-config payload schemas.
+
+#### Backend Scrutiny Core (`audit/backend/scrutiny`)
+
+- `__init__.py` : package marker for scrutiny modules.
+- `engine.py` : runs full rule execution pipeline over ingested data.
+- `exporter.py` : creates formatted scrutiny Excel output.
+- `ingestor.py` : robust schema mapping, normalization, validation, and DataFrame preparation.
+
+##### Backend Scrutiny ML (`audit/backend/scrutiny/ml`)
+
+- `__init__.py` : package marker for ML modules.
+- `feature_engineering.py` : transforms GL rows into model-ready feature vectors.
+- `model.py` : trains/runs Isolation Forest anomaly model.
+
+##### Backend Scrutiny Rules (`audit/backend/scrutiny/rules`)
+
+- `__init__.py` : package marker for scrutiny rule modules.
+- `r1_round_amount.py` : rule implementation for round amounts.
+- `r2_weekend.py` : rule implementation for weekend entries.
+- `r3_period_end.py` : rule implementation for period-end spikes.
+- `r4_weak_narration.py` : rule implementation for weak narration.
+- `r5_duplicate.py` : rule implementation for duplicate checks.
+- `r6_voucher_type.py` : rule implementation for voucher type checks.
+
+#### Backend Services (`audit/backend/services`)
+
+- `__init__.py` : package marker for service modules.
+- `auth_service.py` : auth business logic and token/user operations.
+- `scrutiny_service.py` : analysis pipeline integration used by scrutiny endpoints.
+- `workbook_service.py` : workbook persistence and state update operations.
+
+#### Backend Tests (`audit/backend/tests`)
+
+- `__init__.py` : package marker for tests.
+- `conftest.py` : shared pytest fixtures and test setup.
+- `test_engine.py` : tests for rule execution engine behavior.
+- `test_ingestor.py` : tests for schema detection, mapping, and ingestion validation.
+- `test_rules.py` : tests for individual rule module outputs.
+
+### Frontend (`audit/frontend`)
+
+- `index.html` : Vite HTML entry shell.
+- `package.json` : frontend dependencies and scripts.
+- `eslint.config.js` : linting configuration.
+- `vite.config.ts` : Vite build/dev server configuration.
+- `tsconfig.json` : shared TypeScript configuration root.
+- `tsconfig.app.json` : TypeScript settings for browser app code.
+- `tsconfig.node.json` : TypeScript settings for Node/Vite config files.
+
+#### Frontend App Entry (`audit/frontend/src`)
+
+- `main.tsx` : React bootstrap and app mount.
+- `App.tsx` : top-level app state and routing/page flow control.
+- `index.css` : global styles and editor-related overrides.
+
+#### Frontend API Clients (`audit/frontend/src/api`)
+
+- `authApi.ts` : calls backend auth endpoints.
+- `client.ts` : shared fetch wrappers for JSON/blob API calls.
+- `scrutinyApi.ts` : calls analyze/schema-preview/export scrutiny APIs.
+- `workbooksApi.ts` : calls workbook list/detail/create/config/ingest APIs.
+
+#### Frontend Components (`audit/frontend/src/components`)
+
+##### Auth
+
+- `auth/LoginScreen.tsx` : login UI and auth form interactions.
+
+##### Common
+
+- `common/DataTable.tsx` : reusable table rendering component.
+- `common/Disclaimer.tsx` : static disclaimer/info banner component.
+- `common/FileUpload.tsx` : reusable upload dropzone/input component.
+- `common/MetricCard.tsx` : reusable KPI/summary card component.
+
+##### Layout
+
+- `layout/AppShell.tsx` : main application shell and cross-page workflow container.
+
+##### Scrutiny
+
+- `scrutiny/CategoryChart.tsx` : chart for flagged category distribution.
+- `scrutiny/LiveFilters.tsx` : filter controls for scrutiny result slicing.
+- `scrutiny/ScrutinyTab.tsx` : scrutiny tab wrapper and interactions.
+- `scrutiny/SummaryCards.tsx` : summary cards for totals and risk signals.
+
+#### Frontend Pages (`audit/frontend/src/pages`)
+
+- `AuditReportPage.tsx` : final report/insights page and export actions.
+- `ClientDashboardPage.tsx` : client-level dashboard overview screen.
+- `DashboardPage.tsx` : primary dashboard landing and metrics.
+- `DataIngestionWorkspacePage.tsx` : workbook entity setup and ingestion workspace.
+- `FlaggedTransactionsPage.tsx` : overview/investigation/documentation review workspace.
+- `PostLoginWorkbooksPage.tsx` : workbook list/create/select after authentication.
+- `UploadPage.tsx` : upload/start-analysis page.
+
+#### Frontend Types (`audit/frontend/src/types`)
+
+- `auth.ts` : auth-related TypeScript interfaces.
+- `scrutiny.ts` : scrutiny response/request type definitions.
+- `workbook.ts` : workbook and ingestion-related TypeScript models.
+
+#### Frontend Utils (`audit/frontend/src/utils`)
+
+- `format.ts` : shared number/date/text formatting helper functions.
+
 ## Prerequisites
 
 - Python 3.10+

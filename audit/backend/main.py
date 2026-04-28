@@ -12,7 +12,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import scrutiny, auth, workbooks
+from routers import scrutiny, auth, workbooks, clients
 
 app = FastAPI(title="Audit Anomaly Detection API", version="1.0.0")
 
@@ -24,10 +24,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 app.include_router(scrutiny.router, prefix="/api/scrutiny", tags=["Scrutiny"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(workbooks.router, prefix="/api/workbooks", tags=["Workbooks"])
+app.include_router(clients.router, prefix="/api/clients", tags=["Clients"])
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)

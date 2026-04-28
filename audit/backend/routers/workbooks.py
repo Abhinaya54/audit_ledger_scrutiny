@@ -14,6 +14,7 @@ from services.workbook_service import (
     list_workbooks_for_user,
     save_analysis_for_user,
     save_entity_config_for_user,
+    query_transactions_for_user,
     to_public_workbook,
 )
 
@@ -144,6 +145,8 @@ async def ingest_workbook_file(
             workbook_id,
             summary=result.get("summary", {}),
             category_counts=result.get("category_counts", []),
+            flagged_rows=result.get("flagged_rows", []),
+            review_rows=result.get("review_rows", []),
         )
         return result
     except SchemaError as exc:

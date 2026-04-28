@@ -1,25 +1,44 @@
-import { apiFetch } from './client';
-import type { AuthResponse, AuthUser, LoginPayload, SignupPayload } from '../types/auth';
+import { apiClient } from './client';
 
-export async function signup(payload: SignupPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/api/auth/signup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+export interface User {
+  id: string;
+  name: string;
+  email: string;
 }
 
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+export interface AuthResponse {
+  access_token: string;
+  user: User;
 }
 
-export async function me(token: string): Promise<AuthUser> {
-  return apiFetch<AuthUser>('/api/auth/me', {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
+export const authApi = {
+  // Sign up a new user
+  signup: async (name: string, email: string, password: string): Promise<AuthResponse> => {
+    return apiClient.post('/auth/signup', { name, email, password });
+  },
+
+  // Log in a user
+  login: async (email: string, password: string): Promise<AuthResponse> => {
+    return apiClient.post('/auth/login', { email, password });
+  },
+
+  // Get current user info
+  getCurrentUser: async (token: string): Promise<User> => {
+    return apiClient.get('/auth/me', token);
+  },
+
+  // Store token in localStorage
+  setToken: (token: string) => {
+    localStorage.setItem('auth_token', token);
+  },
+
+  // Get token from localStorage
+  getToken: (): string | null => {
+    return localStorage.getItem('auth_token');
+  },
+
+  // Remove token from localStorage
+  clearToken: () => {
+    localStorage.removeItem('auth_token');
+  },
+};

@@ -1,46 +1,29 @@
-import { apiFetch, apiDownload } from './client';
-import type { SchemaPreviewResponse, ScrutinyResponse } from '../types/scrutiny';
+import { apiClient } from './client';
 
-export async function analyzeFile(
-  file: File,
-  useMl: boolean,
-  contamination: number,
-): Promise<ScrutinyResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('use_ml', String(useMl));
-  formData.append('contamination', String(contamination));
+export const scrutinyApi = {
+  // Analyze a file for anomalies
+  analyze: async (file: File, useMl: boolean = true, contamination: number = 0.05) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('use_ml', String(useMl));
+    formData.append('contamination', String(contamination));
+    return apiClient.postFormData('/scrutiny/analyze', formData);
+  },
 
-  return apiFetch<ScrutinyResponse>('/api/scrutiny/analyze', {
-    method: 'POST',
-    body: formData,
-  });
-}
+  // Preview the file schema mapping
+  previewSchema: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.postFormData('/scrutiny/schema-preview', formData);
+  },
 
-export async function exportReport(
-  file: File,
-  useMl: boolean,
-  contamination: number,
-  approved = false,
-): Promise<Blob> {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('use_ml', String(useMl));
-  formData.append('contamination', String(contamination));
-  formData.append('approved', String(approved));
-
-  return apiDownload('/api/scrutiny/export', {
-    method: 'POST',
-    body: formData,
-  });
-}
-
-export async function previewSchema(file: File): Promise<SchemaPreviewResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  return apiFetch<SchemaPreviewResponse>('/api/scrutiny/schema-preview', {
-    method: 'POST',
-    body: formData,
-  });
-}
+  // Export the report as Excel
+  exportReport: async (file: File, useMl: boolean = true, contamination: number = 0.05, approved: boolean = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('use_ml', String(useMl));
+    formData.append('contamination', String(contamination));
+    formData.append('approved', String(approved));
+    return apiClient.postFormDataBlob('/scrutiny/export', formData);
+  },
+};

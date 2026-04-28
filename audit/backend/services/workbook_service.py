@@ -149,6 +149,8 @@ def save_analysis_for_user(
     workbook_id: str,
     summary: Dict[str, Any],
     category_counts: List[Dict[str, Any]],
+    flagged_rows: Optional[List[Dict[str, Any]]] = None,
+    review_rows: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     doc = get_workbook_for_user(user_id, workbook_id)
     now = datetime.now(timezone.utc)
@@ -175,6 +177,8 @@ def save_analysis_for_user(
                     "risk_score": risk_score,
                     "latest_summary": latest_summary,
                     "latest_category_counts": category_counts,
+                    "flagged_rows": flagged_rows or [],
+                    "review_rows": review_rows or [],
                     "updated_at": now,
                 }
             },
@@ -186,8 +190,100 @@ def save_analysis_for_user(
     doc["risk_score"] = risk_score
     doc["latest_summary"] = latest_summary
     doc["latest_category_counts"] = category_counts
+    doc["flagged_rows"] = flagged_rows or []
+    doc["review_rows"] = review_rows or []
     doc["updated_at"] = now
     return doc
+
+
+def _is_date_in_range(date_str: str, start_date: Optional[str], end_date: Optional[str]) -> bool:
+    """Check if a date falls within a range."""
+    try:
+        if not date_str:
+            return False
+        row_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        if start_date:
+            start = datetime.strptime(start_date, "%Y-%m-%d").date()
+            if row_date < start:
+                return False
+        if end_date:
+            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            if row_date > end:
+                return False
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
+
+
+def _is_amount_in_range(row: Dict[str, Any], min_amt: float, max_amt: float) -> bool:
+    """Check if transaction amount is within range."""
+    try:
+        debit = float(row.get("debit", 0) or 0)
+        credit = float(row.get("credit", 0) or 0)
+        amount = debit or credit
+        return min_amt <= amount <= max_amt
+    except (ValueError, TypeError):
+        return False
+
+
+def query_transactions_for_user(
+    user_id: str,
+    workbook_id: str,
+    filters: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Query and filter transactions from a workbook's analysis."""
+    doc = get_workbook_for_user(user_id, workbook_id)
+    
+    # Get all transactions (flagged rows contain the anomalies)
+    all_rows = doc.get("flagged_rows", [])
+    if not all_rows:
+        return []
+    
+    filtered_rows = all_rows
+    
+    # Apply date range filter
+    if "start_date" in filters or "end_date" in filters:
+        start_date = filters.get("start_date")
+        end_date = filters.get("end_date")
+        filtered_rows = [
+            row for row in filtered_rows
+            if _is_date_in_range(row.get("date"), start_date, end_date)
+        ]
+    
+    # Apply account filter
+    if "accounts" in filters and filters["accounts"]:
+        account_list = filters["accounts"]
+        filtered_rows = [
+            row for row in filtered_rows
+            if any(acc.lower() in str(row.get("account_name", "")).lower() for acc in account_list)
+        ]
+    
+    # Apply amount range filter
+    if "min_amount" in filters or "max_amount" in filters:
+        min_amt = filters.get("min_amount", 0)
+        max_amt = filters.get("max_amount", float('inf'))
+        filtered_rows = [
+            row for row in filtered_rows
+            if _is_amount_in_range(row, min_amt, max_amt)
+        ]
+    
+    # Apply category filter
+    if "categories" in filters and filters["categories"]:
+        cat_list = filters["categories"]
+        filtered_rows = [
+            row for row in filtered_rows
+            if any(cat.lower() in str(row.get("scrutiny_category", "")).lower() for cat in cat_list)
+        ]
+    
+    # Apply text search in narration
+    if "search_text" in filters and filters["search_text"]:
+        search_term = filters["search_text"].lower()
+        filtered_rows = [
+            row for row in filtered_rows
+            if search_term in str(row.get("narration", "")).lower()
+        ]
+    
+    return filtered_rows
 
 
 def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -210,15 +306,19 @@ def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
         }
 
     latest_summary_raw = doc.get("latest_summary") if isinstance(doc.get("latest_summary"), dict) else None
-    latest_summary = None
+    analysis_summary = None
     if latest_summary_raw:
-        latest_summary = {
+        analysis_summary = {
             "total_entries": int(latest_summary_raw.get("total_entries", 0)),
             "rule_flagged": int(latest_summary_raw.get("rule_flagged", 0)),
             "ml_flagged": int(latest_summary_raw.get("ml_flagged", 0)),
             "total_flagged": int(latest_summary_raw.get("total_flagged", 0)),
             "pct_flagged": float(latest_summary_raw.get("pct_flagged", 0)),
         }
+
+    category_counts = []
+    if isinstance(doc.get("latest_category_counts"), list):
+        category_counts = doc.get("latest_category_counts", [])
 
     return {
         "id": str(doc.get("_id", "")),
@@ -231,5 +331,6 @@ def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
         "risk_score": int(doc.get("risk_score", 0)),
         "has_entity_config": bool(entity_config),
         "entity_config": entity_config,
-        "latest_summary": latest_summary,
+        "analysis_summary": analysis_summary,
+        "category_counts": category_counts,
     }

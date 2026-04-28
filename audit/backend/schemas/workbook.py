@@ -46,4 +46,5 @@ class WorkbookOut(BaseModel):
     risk_score: int
     has_entity_config: bool = False
     entity_config: Optional[WorkbookEntityConfigOut] = None
-    latest_summary: Optional[WorkbookAnalysisSummaryOut] = None
+    analysis_summary: Optional[WorkbookAnalysisSummaryOut] = None
+    category_counts: Optional[list] = None
