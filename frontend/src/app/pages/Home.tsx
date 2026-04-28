@@ -32,7 +32,7 @@ export default function Home() {
           clientName: wb.client_name,
           financialYear: wb.financial_year,
           status: wb.analysis_summary ? 'Completed' : 'In Progress',
-          lastModified: new Date(wb.updated_at).toLocaleDateString(),
+          lastModified: wb.last_modified ? new Date(wb.last_modified).toLocaleDateString() : '—',
           riskScore: wb.analysis_summary
             ? Math.round(
                 ((wb.analysis_summary.total_flagged || 0) /
