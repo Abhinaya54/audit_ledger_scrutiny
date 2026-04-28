@@ -4,7 +4,6 @@ import { Plus, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { workbooksApi } from '../../api/workbooksApi';
 import { useAuth } from '../context/AuthContext';
-
 interface WorkbookDisplay {
   id: string;
   clientName: string;
@@ -13,7 +12,6 @@ interface WorkbookDisplay {
   lastModified: string;
   riskScore?: number;
 }
-
 export default function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
