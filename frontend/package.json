@@ -1,4 +1,4 @@
-{
+ {
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "vercel-build": "npm run build",
     "lint": "eslint .",
     "preview": "vite preview"
   },

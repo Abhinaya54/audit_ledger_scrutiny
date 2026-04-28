@@ -1,11 +1,24 @@
-# Deployment Plan — Vercel + Render
+# Fix Vercel Build Error
 
-## Steps
-- [x] Step 1: Update Git remote to `https://github.com/Abhinaya54/audit_ledger_scrutiny.git`
-- [x] Step 2: Create `vercel.json` for frontend deployment
-- [x] Step 3: Create `render.yaml` for backend deployment
-- [x] Step 4: Update `backend/main.py` for production (host 0.0.0.0, port from env)
-- [x] Step 5: Verify `.gitignore` covers build artifacts
-- [x] Step 6: Update `README.md` with deployment instructions
-- [ ] Step 7: Commit all changes and push to new repo
+## Problem
+Vercel build fails with:
+```
+npm error Missing script: "vercel-build"
+Error: Command "npm run vercel-build" exited with 1
+```
+
+## Root Cause
+- `vercel.json` configures `"buildCommand": "npm run vercel-build"`
+- Root `package.json` has the `vercel-build` script
+- Vercel auto-detects the frontend framework (Vite) and runs npm from the `frontend/` directory
+- `frontend/package.json` was missing the `vercel-build` script
+
+## Plan
+- [x] Add `"vercel-build": "npm run build"` to `frontend/package.json` scripts
+
+## Files edited
+- `frontend/package.json`
+
+## Status
+Fixed. Vercel will now find and execute `vercel-build` from `frontend/package.json`, which delegates to the existing `build` script (`tsc -b && vite build`).
 
