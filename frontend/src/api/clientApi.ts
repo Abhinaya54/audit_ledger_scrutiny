@@ -23,7 +23,7 @@ function _token(): string {
 export const clientsApi = {
   // List all clients
   listClients: async (): Promise<Client[]> => {
-    return apiClient.get('/clients', _token());
+    return apiClient.get('/api/clients', _token());
   },
 
   // Create a new client
@@ -35,12 +35,12 @@ export const clientsApi = {
     last_audit_date?: string;
     notes?: string;
   }): Promise<Client> => {
-    return apiClient.post('/clients', data, _token());
+    return apiClient.post('/api/clients', data, _token());
   },
 
   // Get a specific client
   getClient: async (clientId: string): Promise<Client> => {
-    return apiClient.get(`/clients/${clientId}`, _token());
+    return apiClient.get(`/api/clients/${clientId}`, _token());
   },
 
   // Update a client
@@ -55,12 +55,12 @@ export const clientsApi = {
       notes?: string;
     }
   ): Promise<Client> => {
-    return apiClient.put(`/clients/${clientId}`, data, _token());
+    return apiClient.put(`/api/clients/${clientId}`, data, _token());
   },
 
   // Delete a client
   deleteClient: async (clientId: string): Promise<void> => {
-    return apiClient.delete(`/clients/${clientId}`, _token());
+    return apiClient.delete(`/api/clients/${clientId}`, _token());
   },
 };
 

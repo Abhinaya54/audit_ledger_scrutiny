@@ -24,7 +24,7 @@ function _token(): string {
 export const workbooksApi = {
   // List all workbooks for the current user
   listWorkbooks: async (): Promise<Workbook[]> => {
-    return apiClient.get('/workbooks', _token());
+    return apiClient.get('/api/workbooks', _token());
   },
 
   // Create a new workbook
@@ -34,17 +34,17 @@ export const workbooksApi = {
     functional_currency: string;
     engagement_type: string;
   }): Promise<Workbook> => {
-    return apiClient.post('/workbooks', data, _token());
+    return apiClient.post('/api/workbooks', data, _token());
   },
 
   // Get a specific workbook
   getWorkbook: async (workbookId: string): Promise<Workbook> => {
-    return apiClient.get(`/workbooks/${workbookId}`, _token());
+    return apiClient.get(`/api/workbooks/${workbookId}`, _token());
   },
 
   // Save entity configuration
   saveEntityConfig: async (workbookId: string, config: Record<string, any>): Promise<Workbook> => {
-    return apiClient.put(`/workbooks/${workbookId}/entity-config`, config, _token());
+    return apiClient.put(`/api/workbooks/${workbookId}/entity-config`, config, _token());
   },
 
   // Ingest a file for analysis
@@ -59,7 +59,7 @@ export const workbooksApi = {
     formData.append('use_ml', String(useMl));
     formData.append('contamination', String(contamination));
 
-    return apiClient.postFormData(`/workbooks/${workbookId}/ingest`, formData, _token());
+    return apiClient.postFormData(`/api/workbooks/${workbookId}/ingest`, formData, _token());
   },
 };
 
