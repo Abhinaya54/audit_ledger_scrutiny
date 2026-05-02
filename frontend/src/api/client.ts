@@ -1,4 +1,6 @@
-const API_BASE_URL = '/api';
+const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined;
+const apiUrl = rawApiUrl?.replace(/\/$/, '');
+const API_BASE_URL = apiUrl ? `${apiUrl}/api` : '/api';
 
 function _headers(token?: string, contentType = true): Record<string, string> {
   const h: Record<string, string> = {};
