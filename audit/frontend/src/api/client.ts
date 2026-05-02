@@ -1,7 +1,12 @@
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
+function normalizeUrl(baseUrl: string): string {
+  return baseUrl.replace(/\/$/, '');
+}
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const base = normalizeUrl(API_BASE);
+  const response = await fetch(`${base}${path}`, {
     ...options,
   });
   if (!response.ok) {

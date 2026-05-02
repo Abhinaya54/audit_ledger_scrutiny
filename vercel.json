@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://audit-ledger-backend.onrender.com/api/:path*"
+      "destination": "https://audit-ledger-scrutiny.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
