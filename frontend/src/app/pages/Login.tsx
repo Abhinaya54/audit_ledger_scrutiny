@@ -47,27 +47,60 @@ export default function Login() {
   };
 
   return (
-    <div className="h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-slate-50">
       {/* Left side - Brand panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#095859] to-[#074645] p-12 flex-col justify-between">
+      <div className="hidden xl:flex xl:w-5/12 bg-gradient-to-br from-[#095859] to-[#0f5d56] p-12 flex-col justify-between text-white">
         <div>
-          <h1 className="text-white text-3xl mb-2">General Ledger Scrutiny</h1>
-          <p className="text-white/80 text-lg">Enterprise audit intelligence platform</p>
+          <div className="rounded-2xl bg-white/10 p-4 inline-flex items-center gap-3 mb-8">
+            <span className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center text-xl font-semibold">
+              AI
+            </span>
+            <div>
+              <p className="text-sm uppercase tracking-[0.24em] text-white/70">Audit Intelligence</p>
+              <p className="text-lg font-semibold">General Ledger Scrutiny</p>
+            </div>
+          </div>
+
+          <h1 className="text-4xl font-semibold leading-tight mb-4">
+            Securely uncover irregularities in your audit ledger.
+          </h1>
+          <p className="text-base text-white/75 max-w-xl">
+            Enterprise audit intelligence for your finance team. Analyze transactions, identify risk, and keep your controls strong.
+          </p>
+
+          <div className="mt-10 space-y-4 text-sm text-white/80 max-w-md">
+            <div className="flex items-start gap-3">
+              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-300" />
+              <p>Risk-aware ledger review with intelligent rule checks.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-300" />
+              <p>Fast onboarding for auditors and finance professionals.</p>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-300" />
+              <p>Secure access, clean reporting, and actionable insights.</p>
+            </div>
+          </div>
         </div>
-        <div className="text-white/70 text-sm">
+
+        <div className="text-sm text-white/70">
           <p>© 2024 Audit Intelligence. All rights reserved.</p>
         </div>
       </div>
 
       {/* Right side - Login form */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50 p-8">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow-lg p-8">
+      <div className="flex-1 flex items-center justify-center px-6 py-10 lg:py-16">
+        <div className="w-full max-w-xl">
+          <div className="bg-white rounded-[30px] border border-slate-200 shadow-[0_20px_80px_rgba(15,23,42,0.08)] p-10">
             <div className="mb-8">
-              <h2 className="text-2xl text-gray-900 mb-2">
+              <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+                Audit Workspace
+              </span>
+              <h2 className="mt-4 text-3xl font-semibold text-slate-900 mb-2">
                 {isSignUp ? 'Create Account' : 'Sign In'}
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600">
                 {isSignUp ? 'Register for audit workspace access' : 'Access your audit workspace'}
               </p>
             </div>
@@ -75,59 +108,62 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {isSignUp && (
                 <div>
-                  <label htmlFor="name" className="block text-sm text-gray-700 mb-2">
+                  <label htmlFor="name" className="block text-sm text-slate-700 mb-2">
                     Full Name
                   </label>
                   <input
                     id="name"
                     type="text"
+                    autoComplete="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required={isSignUp}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
                     placeholder="John Doe"
                   />
                 </div>
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm text-gray-700 mb-2">
+                <label htmlFor="email" className="block text-sm text-slate-700 mb-2">
                   Email Address
                 </label>
                 <input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
                   placeholder="you@company.com"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="password" className="block text-sm text-gray-700">
+                  <label htmlFor="password" className="block text-sm text-slate-700">
                     Password
                   </label>
                 </div>
                 <input
                   id="password"
                   type="password"
+                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
                   placeholder="Enter your password"
                 />
-                <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters</p>
+                <p className="text-xs text-slate-500 mt-1">Must be at least 8 characters</p>
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full px-4 py-3 bg-[#095859] text-white rounded-lg hover:bg-[#0B6B6A] transition-colors font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-[#095859] text-white rounded-2xl hover:bg-[#0B6B6A] transition-colors font-medium disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -142,6 +178,7 @@ export default function Login() {
 
             <div className="mt-6 text-center">
               <button
+                type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
                 className="text-sm text-[#095859] hover:text-[#0B6B6A]"
               >
