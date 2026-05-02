@@ -14,17 +14,17 @@ export interface AuthResponse {
 export const authApi = {
   // Sign up a new user
   signup: async (name: string, email: string, password: string): Promise<AuthResponse> => {
-    return apiClient.post('/auth/signup', { name, email, password });
+    return apiClient.post('/api/auth/signup', { name, email, password });
   },
 
   // Log in a user
   login: async (email: string, password: string): Promise<AuthResponse> => {
-    return apiClient.post('/auth/login', { email, password });
+    return apiClient.post('/api/auth/login', { email, password });
   },
 
   // Get current user info
   getCurrentUser: async (token: string): Promise<User> => {
-    return apiClient.get('/auth/me', token);
+    return apiClient.get('/api/auth/me', token);
   },
 
   // Store token in localStorage
