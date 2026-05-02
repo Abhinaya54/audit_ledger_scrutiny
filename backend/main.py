@@ -20,12 +20,14 @@ app = FastAPI(title="Audit Anomaly Detection API", version="1.0.0")
 _origins_env = os.environ.get("ALLOWED_ORIGINS", "")
 ALLOWED_ORIGINS = _origins_env.split(",") if _origins_env and _origins_env != "*" else ["*"]
 
+# Ensure CORS middleware handles preflight OPTIONS requests properly
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # Allow all origins for flexibility
+    allow_credentials=True,  # Required for Authorization header
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],  # Allow all headers including Authorization
+    expose_headers=["Content-Length", "Content-Type"],
 )
 
 app.include_router(scrutiny.router, prefix="/api/scrutiny", tags=["Scrutiny"])

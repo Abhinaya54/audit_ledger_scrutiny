@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.responses import JSONResponse
 
 from schemas.auth import AuthResponse, LoginRequest, SignupRequest, UserOut
+
+# CORS headers for explicit origin handling
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Credentials": "true",
+}
 from services.auth_service import (
     AuthError,
     authenticate_user,
