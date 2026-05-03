@@ -24,6 +24,12 @@ export default function Workbook() {
         const data = await workbooksApi.getWorkbook(id);
         setWorkbook(data);
       } catch (error: any) {
+        console.error('Failed to load workbook:', error);
+        if (error.message === 'Invalid or expired token') {
+          toast.error('Your session has expired. Please log in again.');
+          navigate('/login');
+          return;
+        }
         toast.error(error?.message || 'Failed to load workbook');
       } finally {
         setIsLoading(false);

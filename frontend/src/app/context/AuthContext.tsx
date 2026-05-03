@@ -25,9 +25,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const currentUser = await authApi.getCurrentUser(token);
           setUser(currentUser);
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to restore session:', error);
+          // Token is invalid/expired, clear it and reset user state
           authApi.clearToken();
+          setUser(null);
         }
       }
       setIsLoading(false);
@@ -60,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     authApi.clearToken();
     setUser(null);
+    // Clear workbook data on logout
+    localStorage.removeItem('workbookData');
   };
 
   return (

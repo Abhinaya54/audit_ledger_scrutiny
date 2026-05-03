@@ -137,6 +137,12 @@ export default function DataIngestionWorkspace() {
           setPreviewData(preview.sample_rows || []);
         }
       } catch (apiError: any) {
+        console.error('API preview failed:', apiError);
+        if (apiError.message === 'Invalid or expired token') {
+          toast.error('Your session has expired. Please log in again.');
+          navigate('/login');
+          return;
+        }
         toast.error('Failed to parse file');
       }
     }
@@ -257,6 +263,12 @@ export default function DataIngestionWorkspace() {
       setDataIngested(true);
       toast.success('Analysis complete');
     } catch (error: any) {
+      console.error('Analysis failed:', error);
+      if (error.message === 'Invalid or expired token') {
+        toast.error('Your session has expired. Please log in again.');
+        navigate('/login');
+        return;
+      }
       toast.error(error?.message || 'Analysis failed');
     } finally {
       setIsAnalyzing(false);

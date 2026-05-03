@@ -30,6 +30,13 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: _headers(token, false),
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.json();
   },
@@ -40,6 +47,13 @@ export const apiClient = {
       headers: _headers(token),
       body: JSON.stringify(data),
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.json();
   },
@@ -50,6 +64,13 @@ export const apiClient = {
       headers: _headers(token, false),
       body: formData,
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.json();
   },
@@ -60,6 +81,13 @@ export const apiClient = {
       headers: _headers(token, false),
       body: formData,
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.blob();
   },
@@ -70,6 +98,13 @@ export const apiClient = {
       headers: _headers(token),
       body: JSON.stringify(data),
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.json();
   },
@@ -79,6 +114,13 @@ export const apiClient = {
       method: 'DELETE',
       headers: _headers(token, false),
     });
+    if (response.status === 401) {
+      // Token expired or invalid - clear it and throw specific error
+      if (token) {
+        localStorage.removeItem('auth_token');
+      }
+      throw new Error('Invalid or expired token');
+    }
     if (!response.ok) throw new Error(await _parseError(response));
     return response.json();
   },

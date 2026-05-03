@@ -41,6 +41,18 @@ export default function Home() {
         }));
         setWorkbooks(mapped);
       } catch (error: any) {
+        console.error('Failed to load workbooks:', error);
+        if (error.message === 'Invalid or expired token') {
+          toast.error('Your session has expired. Please log in again.');
+          navigate('/login');
+          return;
+        }
+        console.error('Failed to load workbooks:', error);
+        if (error.message === 'Invalid or expired token') {
+          toast.error('Your session has expired. Please log in again.');
+          navigate('/login');
+          return;
+        }
         toast.error(error?.message || 'Failed to load workbooks');
       } finally {
         setIsLoading(false);
@@ -107,13 +119,6 @@ export default function Home() {
                   onClick={() => setShowUserMenu(false)}
                 />
                 <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20">
-                  <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50">
-                    Profile Settings
-                  </button>
-                  <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50">
-                    Preferences
-                  </button>
-                  <hr className="my-1 border-gray-200" />
                   <button
                     onClick={handleLogout}
                     className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-gray-50"
