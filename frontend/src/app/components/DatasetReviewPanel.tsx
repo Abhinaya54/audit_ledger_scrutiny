@@ -1,58 +1,55 @@
 import { X } from 'lucide-react';
+import { useWorkbook } from '../context/WorkbookContext';
 
 interface DatasetReviewPanelProps {
   onClose: () => void;
+  uploadedFile?: File;
+  reviewRows?: any[];
+  columnMappings?: Record<string, string>;
+  availableColumns?: string[];
 }
 
-export default function DatasetReviewPanel({ onClose }: DatasetReviewPanelProps) {
-  // Mock data - in real app, this would come from workbook context
-  const datasetInfo = {
-    fileName: 'Acme_GL_FY2023-24.xlsx',
-    uploadedAt: 'March 10, 2026 at 2:34 PM',
-    rowCount: 12842,
-    sheetCount: 3,
-    columnMappings: [
-      { source: 'Transaction Date', mapped: 'Date' },
-      { source: 'Voucher Number', mapped: 'Voucher No' },
-      { source: 'Account Code', mapped: 'Account' },
-      { source: 'Description', mapped: 'Narration' },
-      { source: 'Debit Amount', mapped: 'Debit' },
-      { source: 'Credit Amount', mapped: 'Credit' },
-      { source: 'Currency Code', mapped: 'Currency' },
-    ],
-    dataHealth: {
-      completeness: 98.5,
-      duplicates: 12,
-      blankNarrations: 234,
-      invalidDates: 0,
-    },
-    previewRows: [
-      {
-        date: '01-Apr-2023',
-        voucherNo: 'JV-001',
-        account: 'Cash',
-        narration: 'Opening balance',
-        debit: '₹50,000',
-        credit: '—',
-      },
-      {
-        date: '02-Apr-2023',
-        voucherNo: 'PV-102',
-        account: 'Rent Expense',
-        narration: 'Monthly rent payment',
-        debit: '₹25,000',
-        credit: '—',
-      },
-      {
-        date: '03-Apr-2023',
-        voucherNo: 'RV-045',
-        account: 'Sales Revenue',
-        narration: 'Invoice #1234',
-        debit: '—',
-        credit: '₹75,000',
-      },
-    ],
-  };
+export default function DatasetReviewPanel({ 
+  onClose, 
+  uploadedFile,
+  reviewRows = [],
+  columnMappings = {},
+  availableColumns = []
+}: DatasetReviewPanelProps) {
+  const { workbookData } = useWorkbook();
+
+  // File information
+  const fileName = uploadedFile?.name || 'No file uploaded';
+  const uploadedAt = uploadedFile 
+    ? new Date(uploadedFile.lastModified).toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Unknown';
+
+  const dataRows = reviewRows.length > 0 ? reviewRows : workbookData?.csvData || [];
+  const rowCount = dataRows.length;
+  const effectiveColumns = availableColumns.length
+    ? availableColumns
+    : dataRows.length > 0
+    ? Object.keys(dataRows[0])
+    : [];
+  const columnCount = effectiveColumns.length;
+  const sheetCount = uploadedFile?.name?.endsWith('.xlsx') ? 1 : 0;
+
+  // Build column mappings list
+  const mappingsList = columnMappings 
+    ? Object.entries(columnMappings).map(([systemField, sourceCol]) => ({
+        source: sourceCol,
+        mapped: systemField,
+      }))
+    : [];
+
+  // Preview data - first 3 rows from parsed CSV or backend review rows
+  const previewRows = dataRows.slice(0, 3);
 
   return (
     <>
@@ -86,111 +83,92 @@ export default function DatasetReviewPanel({ onClose }: DatasetReviewPanelProps)
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">File Name:</span>
-                <span className="text-gray-900 font-medium">{datasetInfo.fileName}</span>
+                <span className="text-gray-900 font-medium">{fileName}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Uploaded:</span>
-                <span className="text-gray-900">{datasetInfo.uploadedAt}</span>
+                <span className="text-gray-900">{uploadedAt}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Total Rows:</span>
-                <span className="text-gray-900">{datasetInfo.rowCount.toLocaleString()}</span>
+                <span className="text-gray-900">{rowCount.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Sheet Count:</span>
-                <span className="text-gray-900">{datasetInfo.sheetCount}</span>
+                <span className="text-gray-600">Total Columns:</span>
+                <span className="text-gray-900">{columnCount}</span>
               </div>
+              {sheetCount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Sheet Count:</span>
+                  <span className="text-gray-900">{sheetCount}</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Column Mappings */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Column Mappings</h3>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs text-gray-600">Source Column</th>
-                    <th className="px-4 py-2 text-left text-xs text-gray-600">Mapped To</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {datasetInfo.columnMappings.map((mapping, index) => (
-                    <tr key={index} className="border-t border-gray-200">
-                      <td className="px-4 py-2 text-sm text-gray-700">{mapping.source}</td>
-                      <td className="px-4 py-2 text-sm text-gray-900 font-medium">{mapping.mapped}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Data Health Summary */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Data Health Summary</h3>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Completeness</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500"
-                      style={{ width: `${datasetInfo.dataHealth.completeness}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-gray-900 font-medium">
-                    {datasetInfo.dataHealth.completeness}%
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Duplicate Rows:</span>
-                <span className="text-gray-900">{datasetInfo.dataHealth.duplicates}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Blank Narrations:</span>
-                <span className="text-gray-900">{datasetInfo.dataHealth.blankNarrations}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Invalid Dates:</span>
-                <span className="text-gray-900">{datasetInfo.dataHealth.invalidDates}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Data Preview */}
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Data Preview (First 3 Rows)</h3>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+          {mappingsList.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Column Mappings</h3>
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs text-gray-600">Date</th>
-                      <th className="px-3 py-2 text-left text-xs text-gray-600">Voucher No</th>
-                      <th className="px-3 py-2 text-left text-xs text-gray-600">Account</th>
-                      <th className="px-3 py-2 text-left text-xs text-gray-600">Narration</th>
-                      <th className="px-3 py-2 text-right text-xs text-gray-600">Debit</th>
-                      <th className="px-3 py-2 text-right text-xs text-gray-600">Credit</th>
+                      <th className="px-4 py-2 text-left text-xs text-gray-600">Source Column</th>
+                      <th className="px-4 py-2 text-left text-xs text-gray-600">Mapped To</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {datasetInfo.previewRows.map((row, index) => (
+                    {mappingsList.map((mapping, index) => (
                       <tr key={index} className="border-t border-gray-200">
-                        <td className="px-3 py-2 text-gray-700">{row.date}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.voucherNo}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.account}</td>
-                        <td className="px-3 py-2 text-gray-700">{row.narration}</td>
-                        <td className="px-3 py-2 text-gray-700 text-right">{row.debit}</td>
-                        <td className="px-3 py-2 text-gray-700 text-right">{row.credit}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{mapping.source}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 font-medium">{mapping.mapped}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Data Preview */}
+          {previewRows.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">Data Preview (First {previewRows.length} Rows)</h3>
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {availableColumns.slice(0, 6).map((col) => (
+                          <th key={col} className="px-3 py-2 text-left text-xs text-gray-600 whitespace-nowrap">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewRows.map((row, rowIndex) => (
+                        <tr key={rowIndex} className="border-t border-gray-200">
+                          {availableColumns.slice(0, 6).map((col) => (
+                            <td key={`${rowIndex}-${col}`} className="px-3 py-2 text-gray-700 whitespace-nowrap truncate">
+                              {String(row[col] || '—')}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {rowCount === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">No data loaded yet. Upload a file to see preview.</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

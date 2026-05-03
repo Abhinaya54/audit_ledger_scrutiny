@@ -2,12 +2,15 @@ import { ArrowRight, Settings, Eye, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useState, useMemo } from 'react';
 import DatasetReviewPanel from '../components/DatasetReviewPanel';
+import { useWorkbook } from '../context/WorkbookContext';
 
 interface RiskIntelligenceDashboardProps {
   embedded?: boolean;
   workbookId?: string;
   analysisSummary?: Record<string, any>;
   categoryCounts?: any[];
+  columnMappings?: Record<string, string>;
+  reviewRows?: any[];
 }
 
 export default function RiskIntelligenceDashboard({
@@ -15,8 +18,11 @@ export default function RiskIntelligenceDashboard({
   workbookId,
   analysisSummary,
   categoryCounts,
+  columnMappings = {},
+  reviewRows = [],
 }: RiskIntelligenceDashboardProps) {
   const navigate = useNavigate();
+  const { workbookData } = useWorkbook();
   const [showReviewPanel, setShowReviewPanel] = useState(false);
 
   // Derive KPI cards from real analysis summary
@@ -83,7 +89,20 @@ export default function RiskIntelligenceDashboard({
 
   return (
     <div className={`bg-gray-50 ${embedded ? 'h-full overflow-auto' : 'min-h-screen'}`}>
-      {showReviewPanel && <DatasetReviewPanel onClose={() => setShowReviewPanel(false)} />}
+      {showReviewPanel && (
+        <DatasetReviewPanel
+          onClose={() => setShowReviewPanel(false)}
+          columnMappings={workbookData?.columnMappings || columnMappings}
+          reviewRows={workbookData?.csvData || reviewRows}
+          availableColumns={
+            workbookData?.csvData && workbookData.csvData.length > 0
+              ? Object.keys(workbookData.csvData[0])
+              : reviewRows.length > 0
+              ? Object.keys(reviewRows[0])
+              : []
+          }
+        />
+      )}
 
       {/* Header */}
       {!embedded && (

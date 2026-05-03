@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { workbooksApi } from '../../api/workbooksApi';
-import { scrutinyApi } from '../../api/scrutinyApi';
 import { useWorkbook } from '../context/WorkbookContext';
 
 interface ColumnMapping {
@@ -80,21 +81,54 @@ export default function DataIngestionWorkspace() {
     if (!file) return;
     setUploadedFile(file);
 
-    // Parse CSV client-side
     try {
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      if (lines.length === 0) return;
+      let headers: string[] = [];
+      let rows: any[] = [];
 
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      const rows = lines.slice(1, 21).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-        const row: any = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
+      // Detect file type and parse accordingly
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        // Parse Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (data.length === 0) {
+          toast.error('Excel file is empty');
+          return;
+        }
+
+        headers = (data[0] as string[]).map(h => String(h || '').trim());
+        rows = (data.slice(1, 21) as any[][]).map(row => {
+          const obj: any = {};
+          headers.forEach((header, index) => {
+            obj[header] = row[index] || '';
+          });
+          return obj;
         });
-        return row;
-      });
+      } else {
+        // Parse CSV file using PapaParse
+        const text = await file.text();
+        const parseResult = Papa.parse(text, {
+          header: true,
+          skipEmptyLines: true,
+          dynamicTyping: false,
+          transformHeader: (h: string) => h.trim(),
+        });
+
+        if (!parseResult.data || parseResult.data.length === 0) {
+          toast.error('CSV file is empty or invalid');
+          return;
+        }
+
+        headers = parseResult.meta.fields || [];
+        rows = (parseResult.data.slice(0, 20) as any[]);
+      }
+
+      if (headers.length === 0) {
+        toast.error('No columns found in file');
+        return;
+      }
 
       setParsedCsvData(rows);
       setAvailableColumns(headers);
@@ -127,24 +161,11 @@ export default function DataIngestionWorkspace() {
           mappedColumn: mappings[m.systemField] || '',
         }))
       );
+
+      toast.success(`Loaded ${rows.length} rows with ${headers.length} columns`);
     } catch (error) {
-      console.error('Error parsing CSV:', error);
-      // Fallback to API preview
-      try {
-        const preview = await scrutinyApi.previewSchema(file);
-        if (preview && preview.columns) {
-          setAvailableColumns(preview.columns);
-          setPreviewData(preview.sample_rows || []);
-        }
-      } catch (apiError: any) {
-        console.error('API preview failed:', apiError);
-        if (apiError.message === 'Invalid or expired token') {
-          toast.error('Your session has expired. Please log in again.');
-          navigate('/login');
-          return;
-        }
-        toast.error('Failed to parse file');
-      }
+      console.error('Error parsing file:', error);
+      toast.error('Failed to parse file. Please ensure it is a valid CSV or Excel file.');
     }
   };
 

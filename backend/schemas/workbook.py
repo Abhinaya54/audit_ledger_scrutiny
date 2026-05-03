@@ -16,6 +16,8 @@ class WorkbookEntityConfigRequest(BaseModel):
     functional_currency: str = Field(min_length=2, max_length=80)
     reporting_currency: Optional[str] = Field(default=None, max_length=80)
     company_code: Optional[str] = Field(default=None, max_length=80)
+    header_row: Optional[int] = None
+    column_mappings: Optional[dict[str, str]] = Field(default_factory=dict)
 
 
 class WorkbookEntityConfigOut(BaseModel):
@@ -25,6 +27,8 @@ class WorkbookEntityConfigOut(BaseModel):
     functional_currency: str
     reporting_currency: Optional[str] = None
     company_code: Optional[str] = None
+    header_row: Optional[int] = None
+    column_mappings: Optional[dict[str, str]] = None
 
 
 class WorkbookAnalysisSummaryOut(BaseModel):
@@ -46,5 +50,7 @@ class WorkbookOut(BaseModel):
     risk_score: int
     has_entity_config: bool = False
     entity_config: Optional[WorkbookEntityConfigOut] = None
+    column_mappings: Optional[dict[str, str]] = None
+    review_rows: Optional[list[dict]] = None
     analysis_summary: Optional[WorkbookAnalysisSummaryOut] = None
     category_counts: Optional[list] = None

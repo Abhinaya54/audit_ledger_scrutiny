@@ -135,7 +135,14 @@ export default function Workbook() {
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === 'overview' && (
-          <RiskIntelligenceDashboard embedded workbookId={workbook.id} analysisSummary={workbook.analysis_summary} categoryCounts={workbook.category_counts} />
+          <RiskIntelligenceDashboard
+            embedded
+            workbookId={workbook.id}
+            analysisSummary={workbook.analysis_summary}
+            categoryCounts={workbook.category_counts}
+            columnMappings={workbook.column_mappings}
+            reviewRows={workbook.review_rows}
+          />
         )}
         {activeTab === 'investigation' && (
           <Dashboard embedded workbookId={workbook.id} />

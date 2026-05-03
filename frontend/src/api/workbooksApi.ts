@@ -11,6 +11,8 @@ export interface Workbook {
   risk_score?: number;
   has_entity_config?: boolean;
   entity_config?: Record<string, any>;
+  column_mappings?: Record<string, string>;
+  review_rows?: any[];
   analysis_summary?: Record<string, any>;
   category_counts?: any[];
   last_modified?: string;

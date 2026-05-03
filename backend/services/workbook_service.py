@@ -124,12 +124,21 @@ def save_entity_config_for_user(user_id: str, workbook_id: str, payload: Dict[st
         "company_code": (payload.get("company_code") or "").strip(),
     }
 
+    column_mappings = {}
+    if isinstance(payload.get("column_mappings"), dict):
+        column_mappings = {
+            str(key): str(value) for key, value in payload.get("column_mappings", {}).items() if value is not None
+        }
+
+    header_row = payload.get("header_row")
     try:
         _workbooks_collection().update_one(
             {"_id": doc["_id"], "owner_user_id": user_id},
             {
                 "$set": {
                     "entity_config": entity_config,
+                    "column_mappings": column_mappings,
+                    "header_row": int(header_row) if header_row is not None else None,
                     "status": "In Progress",
                     "updated_at": now,
                 }
@@ -139,6 +148,8 @@ def save_entity_config_for_user(user_id: str, workbook_id: str, payload: Dict[st
         raise WorkbookError("Unable to save workbook configuration. Database operation failed.") from exc
 
     doc["entity_config"] = entity_config
+    doc["column_mappings"] = column_mappings
+    doc["header_row"] = int(header_row) if header_row is not None else None
     doc["status"] = "In Progress"
     doc["updated_at"] = now
     return doc
@@ -320,6 +331,9 @@ def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(doc.get("latest_category_counts"), list):
         category_counts = doc.get("latest_category_counts", [])
 
+    column_mappings = doc.get("column_mappings") if isinstance(doc.get("column_mappings"), dict) else {}
+    review_rows = doc.get("review_rows") if isinstance(doc.get("review_rows"), list) else None
+
     return {
         "id": str(doc.get("_id", "")),
         "client_name": doc.get("client_name", ""),
@@ -331,6 +345,8 @@ def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
         "risk_score": int(doc.get("risk_score", 0)),
         "has_entity_config": bool(entity_config),
         "entity_config": entity_config,
+        "column_mappings": column_mappings,
+        "review_rows": review_rows,
         "analysis_summary": analysis_summary,
         "category_counts": category_counts,
     }
