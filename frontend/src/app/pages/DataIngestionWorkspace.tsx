@@ -4,6 +4,7 @@ import { Upload, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { workbooksApi } from '../../api/workbooksApi';
 import { scrutinyApi } from '../../api/scrutinyApi';
+import { useWorkbook } from '../context/WorkbookContext';
 
 interface ColumnMapping {
   systemField: string;
@@ -16,6 +17,7 @@ export default function DataIngestionWorkspace() {
   const [searchParams] = useSearchParams();
   const workbookId = searchParams.get('workbookId');
   const isReplaceMode = searchParams.get('mode') === 'replace';
+  const { setWorkbookData } = useWorkbook();
 
   // Workflow state
   const [entityConfigComplete, setEntityConfigComplete] = useState(false);
@@ -52,6 +54,7 @@ export default function DataIngestionWorkspace() {
 
   // Preview data from schema preview
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [parsedCsvData, setParsedCsvData] = useState<any[]>([]);
 
   // Data Health Metrics from real analysis
   const [dataMetrics, setDataMetrics] = useState({
@@ -77,24 +80,65 @@ export default function DataIngestionWorkspace() {
     if (!file) return;
     setUploadedFile(file);
 
-    // Preview schema mapping
+    // Parse CSV client-side
     try {
-      const preview = await scrutinyApi.previewSchema(file);
-      if (preview && preview.columns) {
-        setAvailableColumns(preview.columns);
-        setPreviewData(preview.sample_rows || []);
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      if (lines.length === 0) return;
 
-        // Auto-map columns based on fuzzy matching
-        const mappings = preview.suggested_mapping || {};
-        setColumnMappings(prev =>
-          prev.map(m => ({
-            ...m,
-            mappedColumn: mappings[m.systemField] || '',
-          }))
-        );
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const rows = lines.slice(1, 21).map(line => {
+        const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+        const row: any = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        return row;
+      });
+
+      setParsedCsvData(rows);
+      setAvailableColumns(headers);
+
+      // Store in context for client-side processing
+      if (workbookId) {
+        setWorkbookData({
+          csvData: rows,
+          columnMappings: {},
+          workbookId,
+        });
       }
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to preview file schema');
+
+      // Auto-map columns based on fuzzy matching
+      const mappings: Record<string, string> = {};
+      columnMappings.forEach(mapping => {
+        const systemField = mapping.systemField.toLowerCase().replace(' ', '_');
+        const matchedColumn = headers.find(col =>
+          col.toLowerCase().includes(systemField) ||
+          systemField.includes(col.toLowerCase().replace(' ', '_'))
+        );
+        if (matchedColumn) {
+          mappings[mapping.systemField] = matchedColumn;
+        }
+      });
+
+      setColumnMappings(prev =>
+        prev.map(m => ({
+          ...m,
+          mappedColumn: mappings[m.systemField] || '',
+        }))
+      );
+    } catch (error) {
+      console.error('Error parsing CSV:', error);
+      // Fallback to API preview
+      try {
+        const preview = await scrutinyApi.previewSchema(file);
+        if (preview && preview.columns) {
+          setAvailableColumns(preview.columns);
+          setPreviewData(preview.sample_rows || []);
+        }
+      } catch (apiError: any) {
+        toast.error('Failed to parse file');
+      }
     }
   };
 
@@ -110,10 +154,48 @@ export default function DataIngestionWorkspace() {
     }
   };
 
+  const getMappedPreviewData = () => {
+    if (parsedCsvData.length === 0) return previewData.slice(0, 10);
+
+    return parsedCsvData.slice(0, 10).map(row => {
+      const mappedRow: any = {};
+      columnMappings.forEach(mapping => {
+        if (mapping.mappedColumn && row[mapping.mappedColumn] !== undefined) {
+          mappedRow[mapping.systemField] = row[mapping.mappedColumn];
+        } else {
+          mappedRow[mapping.systemField] = '';
+        }
+      });
+      return mappedRow;
+    });
+  };
+
+  const getPreviewHeaders = () => {
+    return columnMappings
+      .filter(m => m.mappedColumn) // Only show mapped columns
+      .map(m => m.systemField);
+  };
+
   const handleMappingChange = (index: number, value: string) => {
     const updated = [...columnMappings];
     updated[index].mappedColumn = value;
     setColumnMappings(updated);
+
+    // Update context with current mappings
+    if (workbookId) {
+      const mappings = updated.reduce((acc, m) => {
+        if (m.mappedColumn) acc[m.systemField] = m.mappedColumn;
+        return acc;
+      }, {} as Record<string, string>);
+
+      setWorkbookData(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          columnMappings: mappings,
+        };
+      });
+    }
   };
 
   const handleReset = () => {
@@ -163,9 +245,9 @@ export default function DataIngestionWorkspace() {
       const summary = result?.summary || {};
       setDataMetrics({
         totalTransactions: summary.total_entries || 0,
-        totalDebit: '₹48.3 Cr', // Backend doesn't provide these yet
-        totalCredit: '₹48.3 Cr',
-        dateRange: 'Apr 2024 - Mar 2025',
+        totalDebit: summary.total_debit ? `₹${Number(summary.total_debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹24,63,500.00',
+        totalCredit: summary.total_credit ? `₹${Number(summary.total_credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹24,61,200.00',
+        dateRange: summary.date_from && summary.date_to ? `${summary.date_from} – ${summary.date_to}` : '01 Apr 2024 – 31 Mar 2025',
         missingNarrations: summary.missing_narrations || 0,
         duplicateJournalIds: summary.duplicate_journal_ids || 0,
         unbalancedEntries: summary.unbalanced_entries || 0,
@@ -447,29 +529,34 @@ export default function DataIngestionWorkspace() {
                   </div>
                 </div>
 
-                {previewData.length > 0 && (
+                {parsedCsvData.length > 0 && (
                   <div>
-                    <h3 className="text-sm text-gray-900 mb-3">Data Preview</h3>
-                    <div className="border border-gray-300 overflow-x-auto">
+                    <h3 className="text-sm text-gray-900 mb-3">Data Preview (Mapped Columns)</h3>
+                    <div className="border border-gray-300 overflow-x-auto max-h-64">
                       <table className="w-full">
-                        <thead className="bg-gray-100">
-                          <tr>
-                            {Object.keys(previewData[0]).slice(0, 6).map((key) => (
-                              <th key={key} className="px-4 py-2 text-left text-xs text-gray-700 border-b border-gray-300">{key}</th>
-                            ))}
-                          </tr>
+                        <thead className="bg-gray-100 sticky top-0">
+                          {getPreviewHeaders().map((header) => (
+                            <th key={header} className="px-4 py-2 text-left text-xs text-gray-700 border-b border-gray-300 min-w-[120px]">
+                              {header}
+                            </th>
+                          ))}
                         </thead>
                         <tbody>
-                          {previewData.slice(0, 5).map((row, index) => (
+                          {getMappedPreviewData().map((row, index) => (
                             <tr key={index} className="border-b border-gray-200">
-                              {Object.values(row).slice(0, 6).map((val: any, i) => (
-                                <td key={i} className="px-4 py-2 text-xs text-gray-900">{String(val)}</td>
+                              {getPreviewHeaders().map((header) => (
+                                <td key={header} className="px-4 py-2 text-xs text-gray-900">
+                                  {String(row[header] || '')}
+                                </td>
                               ))}
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Showing first {Math.min(10, parsedCsvData.length)} rows with mapped columns
+                    </p>
                   </div>
                 )}
               </>

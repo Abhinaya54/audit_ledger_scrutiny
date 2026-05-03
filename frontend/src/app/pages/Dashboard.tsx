@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import FiltersSidebar from '../components/FiltersSidebar';
 import QueryBox from '../components/QueryBox';
+import { useWorkbook } from '../context/WorkbookContext';
 
 interface Tab {
   id: string;
@@ -36,11 +37,11 @@ interface ActiveFilter {
 interface DashboardProps {
   embedded?: boolean;
   workbookId?: string;
-  analysisSummary?: Record<string, any>;
 }
 
-export default function Dashboard({ embedded = false, analysisSummary }: DashboardProps) {
+export default function Dashboard({ embedded = false }: DashboardProps) {
   const navigate = useNavigate();
+  const { workbookData } = useWorkbook();
   const [tabs, setTabs] = useState<Tab[]>([
     { id: '1', label: 'Tab 1', transactions: [], lastRefreshed: null }
   ]);
@@ -51,27 +52,27 @@ export default function Dashboard({ embedded = false, analysisSummary }: Dashboa
   const [showMenuForTab, setShowMenuForTab] = useState<string | null>(null);
   const [showReuploadModal, setShowReuploadModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
+  const [currentQuery, setCurrentQuery] = useState<string>('');
+  const [queryResultLabel, setQueryResultLabel] = useState<string>('');
 
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
-  // Load real flagged transactions from analysis summary
+  // Load CSV data from context
   useEffect(() => {
-    if (!analysisSummary) return;
-    const flaggedRows = analysisSummary.flagged_rows || [];
-    if (flaggedRows.length === 0) return;
+    if (!workbookData || !workbookData.csvData) return;
 
-    const mappedTransactions: Transaction[] = flaggedRows.map((row: any, index: number) => ({
+    const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
       id: String(index + 1),
-      date: row.date || '',
-      voucherNo: row.journal_id || row.voucher_no || '',
-      account: row.account_name || row.account || '',
-      narration: row.narration || '',
-      debit: row.debit ? `₹${Number(row.debit).toLocaleString()}` : '',
-      credit: row.credit ? `₹${Number(row.credit).toLocaleString()}` : '',
-      balance: row.balance ? `₹${Number(row.balance).toLocaleString()}` : '',
-      currency: row.currency || 'INR',
-      scrutinyCategory: row.scrutiny_category || 'Unknown',
-      scrutinyReason: row.scrutiny_reason || '',
+      date: row[workbookData.columnMappings['Date']] || '',
+      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
+      account: row[workbookData.columnMappings['Account Name']] || '',
+      narration: row[workbookData.columnMappings['Narration']] || '',
+      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      balance: '', // Not mapped
+      currency: 'INR',
+      scrutinyCategory: '',
+      scrutinyReason: '',
     }));
 
     setTabs(prevTabs =>
@@ -81,7 +82,7 @@ export default function Dashboard({ embedded = false, analysisSummary }: Dashboa
           : tab
       )
     );
-  }, [analysisSummary, activeTabId]);
+  }, [workbookData, activeTabId]);
 
   const addTab = () => {
     const newTabNumber = tabs.length + 1;
@@ -132,29 +133,185 @@ export default function Dashboard({ embedded = false, analysisSummary }: Dashboa
   };
 
   const handleQuery = (query: string) => {
-    console.log('Query submitted:', query);
+    if (!workbookData) return;
+
+    setCurrentQuery(query);
+    setQueryResultLabel(''); // Reset label
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
+
+    const queryLower = query.toLowerCase().trim();
+
+    let filteredData = [...workbookData.csvData];
+    let queryLabel = '';
+
+    // Check for weekend transactions
+    if (queryLower.includes('weekend') && queryLower.includes('transaction')) {
+      filteredData = filteredData.filter(row => {
+        const dateStr = row[workbookData.columnMappings['Date']] || '';
+        if (!dateStr) return false;
+        try {
+          const date = new Date(dateStr);
+          const day = date.getDay(); // 0 = Sunday, 6 = Saturday
+          return day === 0 || day === 6;
+        } catch {
+          return false;
+        }
+      });
+      queryLabel = `Showing: Weekend Transactions (${filteredData.length} results)`;
+    }
+    // Check for round number transactions
+    else if (queryLower.includes('round') && queryLower.includes('number') && queryLower.includes('transaction')) {
+      filteredData = filteredData.filter(row => {
+        const debit = parseFloat(row[workbookData.columnMappings['Debit']] || '0');
+        const credit = parseFloat(row[workbookData.columnMappings['Credit']] || '0');
+        return (debit > 0 && debit % 1000 === 0) || (credit > 0 && credit % 1000 === 0);
+      });
+      queryLabel = `Showing: Round Number Transactions (${filteredData.length} results)`;
+    }
+    else {
+      // Unknown query
+      setTimeout(() => {
+        setIsLoading(false);
+        toast.info("Demo mode: Try 'Show all weekend transactions' or 'Show round number transactions'");
+      }, 500);
+      return;
+    }
+
+    setQueryResultLabel(queryLabel);
+
+    // Convert back to Transaction format
+    const mappedTransactions: Transaction[] = filteredData.map((row: any, index: number) => ({
+      id: String(index + 1),
+      date: row[workbookData.columnMappings['Date']] || '',
+      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
+      account: row[workbookData.columnMappings['Account Name']] || '',
+      narration: row[workbookData.columnMappings['Narration']] || '',
+      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      balance: '',
+      currency: 'INR',
+      scrutinyCategory: '',
+      scrutinyReason: '',
+    }));
+
+    setTabs(prevTabs =>
+      prevTabs.map(tab =>
+        tab.id === activeTabId
+          ? { ...tab, transactions: mappedTransactions, lastRefreshed: new Date() }
+          : tab
+      )
+    );
+
+    setTimeout(() => setIsLoading(false), 500);
   };
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (filters: any) => {
+    if (!workbookData) return;
+
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 500);
+
+    // Convert filters to active filters display
+    const activeFiltersList: ActiveFilter[] = [];
+    if (filters.ledgerType) activeFiltersList.push({ id: 'ledgerType', label: 'Ledger Type', value: filters.ledgerType });
+    if (filters.financialYear) activeFiltersList.push({ id: 'financialYear', label: 'Financial Year', value: filters.financialYear });
+    if (filters.quarter) activeFiltersList.push({ id: 'quarter', label: 'Quarter', value: filters.quarter });
+    if (filters.customAmount) activeFiltersList.push({ id: 'customAmount', label: 'Amount Above', value: `₹${filters.customAmount}` });
+    if (filters.keywordSearch) activeFiltersList.push({ id: 'keywordSearch', label: 'Keyword', value: filters.keywordSearch });
+
+    setActiveFilters(activeFiltersList);
+
+    // Apply filters to the data
+    let filteredData = [...workbookData.csvData];
+
+    // Apply keyword search
+    if (filters.keywordSearch) {
+      const searchTerm = filters.keywordSearch.toLowerCase();
+      filteredData = filteredData.filter(row => {
+        const narration = (row[workbookData.columnMappings['Narration']] || '').toLowerCase();
+        const account = (row[workbookData.columnMappings['Account Name']] || '').toLowerCase();
+        return narration.includes(searchTerm) || account.includes(searchTerm);
+      });
+    }
+
+    // Apply amount filters
+    if (filters.customAmount) {
+      const threshold = parseFloat(filters.customAmount);
+      filteredData = filteredData.filter(row => {
+        const debit = parseFloat(row[workbookData.columnMappings['Debit']] || '0');
+        const credit = parseFloat(row[workbookData.columnMappings['Credit']] || '0');
+        return debit >= threshold || credit >= threshold;
+      });
+    }
+
+    // Apply account series filters (simplified - checking if account name contains certain keywords)
+    if (filters.accountAssets || filters.accountLiabilities || filters.accountEquity || 
+        filters.accountRevenue || filters.accountCOGS || filters.accountExpenses) {
+      filteredData = filteredData.filter(row => {
+        const account = (row[workbookData.columnMappings['Account Name']] || '').toLowerCase();
+        if (filters.accountAssets && account.includes('asset')) return true;
+        if (filters.accountLiabilities && account.includes('liabilit')) return true;
+        if (filters.accountEquity && account.includes('equity')) return true;
+        if (filters.accountRevenue && account.includes('revenue') || account.includes('income')) return true;
+        if (filters.accountCOGS && account.includes('cost') && account.includes('goods')) return true;
+        if (filters.accountExpenses && account.includes('expens')) return true;
+        return false;
+      });
+    }
+
+    // Convert back to Transaction format
+    const mappedTransactions: Transaction[] = filteredData.map((row: any, index: number) => ({
+      id: String(index + 1),
+      date: row[workbookData.columnMappings['Date']] || '',
+      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
+      account: row[workbookData.columnMappings['Account Name']] || '',
+      narration: row[workbookData.columnMappings['Narration']] || '',
+      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      balance: '',
+      currency: 'INR',
+      scrutinyCategory: '',
+      scrutinyReason: '',
+    }));
+
+    setTabs(prevTabs =>
+      prevTabs.map(tab =>
+        tab.id === activeTabId
+          ? { ...tab, transactions: mappedTransactions, lastRefreshed: new Date() }
+          : tab
+      )
+    );
+
+    setTimeout(() => setIsLoading(false), 500);
   };
 
   const handleResetFilters = () => {
     setActiveFilters([]);
-    setTabs(prevTabs =>
-      prevTabs.map(tab =>
-        tab.id === activeTabId
-          ? { ...tab, transactions: [], lastRefreshed: null }
-          : tab
-      )
-    );
+    setCurrentQuery('');
+    setQueryResultLabel('');
+    // Reset to show all data
+    if (workbookData) {
+      const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
+        id: String(index + 1),
+        date: row[workbookData.columnMappings['Date']] || '',
+        voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
+        account: row[workbookData.columnMappings['Account Name']] || '',
+        narration: row[workbookData.columnMappings['Narration']] || '',
+        debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
+        credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+        balance: '',
+        currency: 'INR',
+        scrutinyCategory: '',
+        scrutinyReason: '',
+      }));
+
+      setTabs(prevTabs =>
+        prevTabs.map(tab =>
+          tab.id === activeTabId
+            ? { ...tab, transactions: mappedTransactions, lastRefreshed: new Date() }
+            : tab
+        )
+      );
+    }
   };
 
   const removeFilter = (filterId: string) => {
@@ -346,6 +503,16 @@ export default function Dashboard({ embedded = false, analysisSummary }: Dashboa
                         </p>
                       )}
                     </div>
+                    {currentQuery && (
+                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                        Query: "{currentQuery}"
+                      </div>
+                    )}
+                    {queryResultLabel && (
+                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800 font-medium">
+                        {queryResultLabel}
+                      </div>
+                    )}
                   </div>
 
                   {activeFilters.length > 0 && (

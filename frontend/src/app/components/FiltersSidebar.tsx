@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface FiltersSidebarProps {
-  onApplyFilters: () => void;
+  onApplyFilters: (filters: any) => void;
   onResetFilters: () => void;
 }
 
@@ -373,7 +373,33 @@ export default function FiltersSidebar({ onApplyFilters, onResetFilters }: Filte
       {/* Apply Filters Button - Fixed at bottom */}
       <div className="p-4 border-t border-gray-200 bg-white space-y-2">
         <button 
-          onClick={onApplyFilters}
+          onClick={() => {
+            const filters = {
+              ledgerType,
+              accountAssets,
+              accountLiabilities,
+              accountEquity,
+              accountRevenue,
+              accountCOGS,
+              accountExpenses,
+              financialYear,
+              quarter,
+              customAmount,
+              amountAbove500k,
+              topTenPercent,
+              keywordSearch,
+              voucherJournal,
+              voucherPayment,
+              voucherReceipt,
+              voucherContra,
+              voucherOther,
+              currencyINR,
+              currencyUSD,
+              currencyEUR,
+              currencyGBP,
+            };
+            onApplyFilters(filters);
+          }}
           className="w-full bg-[#095859] text-white py-3 rounded-lg hover:bg-[#0B6B6A] transition-colors"
         >
           Apply Filters

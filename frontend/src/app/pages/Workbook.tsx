@@ -132,7 +132,7 @@ export default function Workbook() {
           <RiskIntelligenceDashboard embedded workbookId={workbook.id} analysisSummary={workbook.analysis_summary} categoryCounts={workbook.category_counts} />
         )}
         {activeTab === 'investigation' && (
-          <Dashboard embedded workbookId={workbook.id} analysisSummary={workbook.analysis_summary} />
+          <Dashboard embedded workbookId={workbook.id} />
         )}
         {activeTab === 'documentation' && <Documentation />}
       </div>
