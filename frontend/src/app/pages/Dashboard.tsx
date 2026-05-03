@@ -37,11 +37,15 @@ interface ActiveFilter {
 interface DashboardProps {
   embedded?: boolean;
   workbookId?: string;
+  initialCsvData?: any[];
+  initialColumnMappings?: Record<string, string>;
 }
 
-export default function Dashboard({ embedded = false }: DashboardProps) {
+export default function Dashboard({ embedded = false, initialCsvData = [], initialColumnMappings = {} }: DashboardProps) {
   const navigate = useNavigate();
   const { workbookData } = useWorkbook();
+  const csvData = workbookData?.csvData ?? initialCsvData ?? [];
+  const columnMappings = workbookData?.columnMappings ?? initialColumnMappings ?? {};
   const [tabs, setTabs] = useState<Tab[]>([
     { id: '1', label: 'Tab 1', transactions: [], lastRefreshed: null }
   ]);
@@ -57,22 +61,22 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
 
   const activeTab = tabs.find(tab => tab.id === activeTabId);
 
-  // Load CSV data from context
+  // Load CSV data from context or backend fallback
   useEffect(() => {
-    if (!workbookData || !workbookData.csvData) return;
+    if (csvData.length === 0) return;
 
-    const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
+    const mappedTransactions: Transaction[] = csvData.map((row: any, index: number) => ({
       id: String(index + 1),
-      date: row[workbookData.columnMappings['Date']] || '',
-      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
-      account: row[workbookData.columnMappings['Account Name']] || '',
-      narration: row[workbookData.columnMappings['Narration']] || '',
-      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
-      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      date: row[columnMappings['Date']] || row.date || '',
+      voucherNo: row[columnMappings['Journal ID']] || row.journal_id || row.voucher_no || '',
+      account: row[columnMappings['Account Name']] || row.account || '',
+      narration: row[columnMappings['Narration']] || row.narration || '',
+      debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
       balance: '', // Not mapped
-      currency: 'INR',
-      scrutinyCategory: '',
-      scrutinyReason: '',
+      currency: row[columnMappings['Currency']] || row.currency || 'INR',
+      scrutinyCategory: row.scrutiny_category || '',
+      scrutinyReason: row.scrutiny_reason || '',
     }));
 
     setTabs(prevTabs =>
@@ -82,7 +86,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
           : tab
       )
     );
-  }, [workbookData, activeTabId]);
+  }, [csvData, columnMappings, activeTabId]);
 
   const addTab = () => {
     const newTabNumber = tabs.length + 1;
@@ -133,7 +137,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   };
 
   const handleQuery = (query: string) => {
-    if (!workbookData) return;
+    if (csvData.length === 0) return;
 
     setCurrentQuery(query);
     setQueryResultLabel(''); // Reset label
@@ -141,13 +145,13 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
 
     const queryLower = query.toLowerCase().trim();
 
-    let filteredData = [...workbookData.csvData];
+    let filteredData = [...csvData];
     let queryLabel = '';
 
     // Check for weekend transactions
     if (queryLower.includes('weekend')) {
       filteredData = filteredData.filter(row => {
-        const dateStr = row[workbookData.columnMappings['Date']] || '';
+        const dateStr = row[columnMappings['Date']] || row.date || '';
         if (!dateStr) return false;
         try {
           const date = new Date(dateStr);
@@ -162,8 +166,8 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     // Check for round number transactions
     else if (queryLower.includes('round') && queryLower.includes('transaction')) {
       filteredData = filteredData.filter(row => {
-        const debit = parseFloat(row[workbookData.columnMappings['Debit']] || '0');
-        const credit = parseFloat(row[workbookData.columnMappings['Credit']] || '0');
+        const debit = parseFloat(row[columnMappings['Debit']] || '0');
+        const credit = parseFloat(row[columnMappings['Credit']] || '0');
         return (debit > 0 && debit % 1000 === 0) || (credit > 0 && credit % 1000 === 0);
       });
       queryLabel = `Showing: Round Number Transactions (${filteredData.length} results)`;
@@ -176,16 +180,16 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       };
 
       const ordered = [...filteredData].sort((a, b) => {
-        const aAmt = Math.max(parseAmount(a[workbookData.columnMappings['Debit']]), parseAmount(a[workbookData.columnMappings['Credit']]));
-        const bAmt = Math.max(parseAmount(b[workbookData.columnMappings['Debit']]), parseAmount(b[workbookData.columnMappings['Credit']]));
+        const aAmt = Math.max(parseAmount(a[columnMappings['Debit']]), parseAmount(a[columnMappings['Credit']]));
+        const bAmt = Math.max(parseAmount(b[columnMappings['Debit']]), parseAmount(b[columnMappings['Credit']]));
         return bAmt - aAmt;
       });
       const topCount = Math.max(1, Math.floor(ordered.length * 0.1));
       const topThreshold = ordered[topCount - 1]
-        ? Math.max(parseAmount(ordered[topCount - 1][workbookData.columnMappings['Debit']]), parseAmount(ordered[topCount - 1][workbookData.columnMappings['Credit']]))
+        ? Math.max(parseAmount(ordered[topCount - 1][columnMappings['Debit']]), parseAmount(ordered[topCount - 1][columnMappings['Credit']]))
         : 0;
       filteredData = filteredData.filter(row => {
-        const amount = Math.max(parseAmount(row[workbookData.columnMappings['Debit']]), parseAmount(row[workbookData.columnMappings['Credit']]));
+        const amount = Math.max(parseAmount(row[columnMappings['Debit']]), parseAmount(row[columnMappings['Credit']]));
         return amount >= topThreshold;
       });
       queryLabel = `Showing: Top 10% Expenses (${filteredData.length} results)`;
@@ -204,12 +208,12 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     // Convert back to Transaction format
     const mappedTransactions: Transaction[] = filteredData.map((row: any, index: number) => ({
       id: String(index + 1),
-      date: row[workbookData.columnMappings['Date']] || '',
-      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
-      account: row[workbookData.columnMappings['Account Name']] || '',
-      narration: row[workbookData.columnMappings['Narration']] || '',
-      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
-      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      date: row[columnMappings['Date']] || row.date || '',
+      voucherNo: row[columnMappings['Journal ID']] || row.journal_id || row.voucher_no || '',
+      account: row[columnMappings['Account Name']] || row.account || '',
+      narration: row[columnMappings['Narration']] || row.narration || '',
+      debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
       balance: '',
       currency: 'INR',
       scrutinyCategory: '',
@@ -228,7 +232,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   };
 
   const handleApplyFilters = (filters: any) => {
-    if (!workbookData) return;
+    if (csvData.length === 0) return;
 
     setIsLoading(true);
 
@@ -243,15 +247,15 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     setActiveFilters(activeFiltersList);
 
     // Apply filters to the data
-    let filteredData = [...workbookData.csvData];
+    let filteredData = [...csvData];
 
     const getDateFromRow = (row: any) => {
-      const value = row[workbookData.columnMappings['Date']] || row.date || '';
+      const value = row[columnMappings['Date']] || row.date || '';
       const parsed = new Date(String(value));
       return Number.isNaN(parsed.getTime()) ? null : parsed;
     };
 
-    const getRowValue = (row: any, key: string) => String(row[workbookData.columnMappings[key]] || row[key] || '').toLowerCase();
+    const getRowValue = (row: any, key: string) => String(row[columnMappings[key]] || row[key] || '').toLowerCase();
 
     if (filters.ledgerType) {
       const ledgerValue = filters.ledgerType.toLowerCase();
@@ -329,30 +333,30 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     if (filters.customAmount) {
       const threshold = parseFloat(filters.customAmount);
       filteredData = filteredData.filter(row => {
-        const debit = parseAmount(row[workbookData.columnMappings['Debit']]);
-        const credit = parseAmount(row[workbookData.columnMappings['Credit']]);
+        const debit = parseAmount(row[columnMappings['Debit']]);
+        const credit = parseAmount(row[columnMappings['Credit']]);
         return debit >= threshold || credit >= threshold;
       });
     }
 
     if (filters.amountAbove500k) {
       filteredData = filteredData.filter(row => {
-        const debit = parseAmount(row[workbookData.columnMappings['Debit']]);
-        const credit = parseAmount(row[workbookData.columnMappings['Credit']]);
+        const debit = parseAmount(row[columnMappings['Debit']]);
+        const credit = parseAmount(row[columnMappings['Credit']]);
         return debit >= 500000 || credit >= 500000;
       });
     }
 
     if (filters.topTenPercent) {
       const ordered = [...filteredData].sort((a, b) => {
-        const aAmt = Math.max(parseAmount(a[workbookData.columnMappings['Debit']]), parseAmount(a[workbookData.columnMappings['Credit']]));
-        const bAmt = Math.max(parseAmount(b[workbookData.columnMappings['Debit']]), parseAmount(b[workbookData.columnMappings['Credit']]));
+        const aAmt = Math.max(parseAmount(a[columnMappings['Debit']]), parseAmount(a[columnMappings['Credit']]));
+        const bAmt = Math.max(parseAmount(b[columnMappings['Debit']]), parseAmount(b[columnMappings['Credit']]));
         return bAmt - aAmt;
       });
       const topCount = Math.max(1, Math.floor(ordered.length * 0.1));
-      const topThreshold = ordered[topCount - 1] ? Math.max(parseAmount(ordered[topCount - 1][workbookData.columnMappings['Debit']]), parseAmount(ordered[topCount - 1][workbookData.columnMappings['Credit']])) : 0;
+      const topThreshold = ordered[topCount - 1] ? Math.max(parseAmount(ordered[topCount - 1][columnMappings['Debit']]), parseAmount(ordered[topCount - 1][columnMappings['Credit']])) : 0;
       filteredData = filteredData.filter(row => {
-        const amount = Math.max(parseAmount(row[workbookData.columnMappings['Debit']]), parseAmount(row[workbookData.columnMappings['Credit']]));
+        const amount = Math.max(parseAmount(row[columnMappings['Debit']]), parseAmount(row[columnMappings['Credit']]));
         return amount >= topThreshold;
       });
     }
@@ -397,12 +401,12 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     // Convert back to Transaction format
     const mappedTransactions: Transaction[] = filteredData.map((row: any, index: number) => ({
       id: String(index + 1),
-      date: row[workbookData.columnMappings['Date']] || '',
-      voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
-      account: row[workbookData.columnMappings['Account Name']] || '',
-      narration: row[workbookData.columnMappings['Narration']] || '',
-      debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
-      credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+      date: row[columnMappings['Date']] || row.date || '',
+      voucherNo: row[columnMappings['Journal ID']] || row.journal_id || row.voucher_no || '',
+      account: row[columnMappings['Account Name']] || row.account || '',
+      narration: row[columnMappings['Narration']] || row.narration || '',
+      debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
+      credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
       balance: '',
       currency: 'INR',
       scrutinyCategory: '',
@@ -425,15 +429,15 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     setCurrentQuery('');
     setQueryResultLabel('');
     // Reset to show all data
-    if (workbookData) {
-      const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
+    if (csvData.length > 0) {
+      const mappedTransactions: Transaction[] = csvData.map((row: any, index: number) => ({
         id: String(index + 1),
-        date: row[workbookData.columnMappings['Date']] || '',
-        voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
-        account: row[workbookData.columnMappings['Account Name']] || '',
-        narration: row[workbookData.columnMappings['Narration']] || '',
-        debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
-        credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+        date: row[columnMappings['Date']] || row.date || '',
+        voucherNo: row[columnMappings['Journal ID']] || row.journal_id || row.voucher_no || '',
+        account: row[columnMappings['Account Name']] || row.account || '',
+        narration: row[columnMappings['Narration']] || row.narration || '',
+        debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
+        credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
         balance: '',
         currency: 'INR',
         scrutinyCategory: '',
@@ -453,15 +457,15 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const removeFilter = (filterId: string) => {
     const newFilters = activeFilters.filter(f => f.id !== filterId);
     setActiveFilters(newFilters);
-    if (newFilters.length === 0 && workbookData) {
-      const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
+    if (newFilters.length === 0 && csvData.length > 0) {
+      const mappedTransactions: Transaction[] = csvData.map((row: any, index: number) => ({
         id: String(index + 1),
-        date: row[workbookData.columnMappings['Date']] || '',
-        voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
-        account: row[workbookData.columnMappings['Account Name']] || '',
-        narration: row[workbookData.columnMappings['Narration']] || '',
-        debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
-        credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+        date: row[columnMappings['Date']] || row.date || '',
+        voucherNo: row[columnMappings['Journal ID']] || row.journal_id || row.voucher_no || '',
+        account: row[columnMappings['Account Name']] || row.account || '',
+        narration: row[columnMappings['Narration']] || row.narration || '',
+        debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
+        credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
         balance: '',
         currency: 'INR',
         scrutinyCategory: '',
