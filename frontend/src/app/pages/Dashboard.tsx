@@ -145,7 +145,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     let queryLabel = '';
 
     // Check for weekend transactions
-    if (queryLower.includes('weekend') && queryLower.includes('transaction')) {
+    if (queryLower.includes('weekend')) {
       filteredData = filteredData.filter(row => {
         const dateStr = row[workbookData.columnMappings['Date']] || '';
         if (!dateStr) return false;
@@ -160,7 +160,7 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       queryLabel = `Showing: Weekend Transactions (${filteredData.length} results)`;
     }
     // Check for round number transactions
-    else if (queryLower.includes('round') && queryLower.includes('number') && queryLower.includes('transaction')) {
+    else if (queryLower.includes('round') && queryLower.includes('transaction')) {
       filteredData = filteredData.filter(row => {
         const debit = parseFloat(row[workbookData.columnMappings['Debit']] || '0');
         const credit = parseFloat(row[workbookData.columnMappings['Credit']] || '0');
@@ -168,11 +168,33 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
       });
       queryLabel = `Showing: Round Number Transactions (${filteredData.length} results)`;
     }
+    else if (queryLower.includes('top') && queryLower.includes('10') && queryLower.includes('expense')) {
+      const parseAmount = (value: unknown) => {
+        const normalized = String(value || '').replace(/[^0-9.-]+/g, '');
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const ordered = [...filteredData].sort((a, b) => {
+        const aAmt = Math.max(parseAmount(a[workbookData.columnMappings['Debit']]), parseAmount(a[workbookData.columnMappings['Credit']]));
+        const bAmt = Math.max(parseAmount(b[workbookData.columnMappings['Debit']]), parseAmount(b[workbookData.columnMappings['Credit']]));
+        return bAmt - aAmt;
+      });
+      const topCount = Math.max(1, Math.floor(ordered.length * 0.1));
+      const topThreshold = ordered[topCount - 1]
+        ? Math.max(parseAmount(ordered[topCount - 1][workbookData.columnMappings['Debit']]), parseAmount(ordered[topCount - 1][workbookData.columnMappings['Credit']]))
+        : 0;
+      filteredData = filteredData.filter(row => {
+        const amount = Math.max(parseAmount(row[workbookData.columnMappings['Debit']]), parseAmount(row[workbookData.columnMappings['Credit']]));
+        return amount >= topThreshold;
+      });
+      queryLabel = `Showing: Top 10% Expenses (${filteredData.length} results)`;
+    }
     else {
       // Unknown query
       setTimeout(() => {
         setIsLoading(false);
-        toast.info("Demo mode: Try 'Show all weekend transactions' or 'Show round number transactions'");
+        toast.info("Demo mode: Try 'Show entries posted on weekends' or 'List round-number transactions'");
       }, 500);
       return;
     }
@@ -223,37 +245,151 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
     // Apply filters to the data
     let filteredData = [...workbookData.csvData];
 
-    // Apply keyword search
+    const getDateFromRow = (row: any) => {
+      const value = row[workbookData.columnMappings['Date']] || row.date || '';
+      const parsed = new Date(String(value));
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const getRowValue = (row: any, key: string) => String(row[workbookData.columnMappings[key]] || row[key] || '').toLowerCase();
+
+    if (filters.ledgerType) {
+      const ledgerValue = filters.ledgerType.toLowerCase();
+      filteredData = filteredData.filter(row => {
+        const combined = [
+          getRowValue(row, 'Account Name'),
+          getRowValue(row, 'Narration'),
+          getRowValue(row, 'Voucher Type'),
+        ].join(' ');
+
+        if (ledgerValue === 'general') return true;
+        if (ledgerValue === 'ar') return combined.includes('receivable') || combined.includes('ar');
+        if (ledgerValue === 'ap') return combined.includes('payable') || combined.includes('ap');
+        if (ledgerValue === 'payroll') return combined.includes('payroll') || combined.includes('salary') || combined.includes('wage');
+        if (ledgerValue === 'inventory') return combined.includes('inventory') || combined.includes('stock');
+        if (ledgerValue === 'fixed-assets') return combined.includes('fixed asset') || combined.includes('asset');
+        if (ledgerValue === 'bank') return combined.includes('bank') || combined.includes('cash');
+        if (ledgerValue === 'purchase') return combined.includes('purchase') || combined.includes('procure');
+        if (ledgerValue === 'sales') return combined.includes('sale') || combined.includes('revenue');
+        return true;
+      });
+    }
+
+    if (filters.financialYear) {
+      filteredData = filteredData.filter(row => {
+        const date = getDateFromRow(row);
+        if (!date) return false;
+        const year = date.getFullYear();
+        const month = date.getMonth();
+
+        if (filters.financialYear === '2025-26') {
+          return year === 2025 || (year === 2026 && month <= 2);
+        }
+        if (filters.financialYear === '2024-25') {
+          return year === 2024 || (year === 2025 && month <= 2);
+        }
+        if (filters.financialYear === '2023-24') {
+          return year === 2023 || (year === 2024 && month <= 2);
+        }
+        if (filters.financialYear === '2022-23') {
+          return year === 2022 || (year === 2023 && month <= 2);
+        }
+        return String(year) === filters.financialYear;
+      });
+    }
+
+    if (filters.quarter) {
+      const quarterMap: Record<string, number[]> = {
+        q1: [3, 4, 5],
+        q2: [6, 7, 8],
+        q3: [9, 10, 11],
+        q4: [0, 1, 2],
+      };
+      filteredData = filteredData.filter(row => {
+        const date = getDateFromRow(row);
+        return date ? quarterMap[filters.quarter]?.includes(date.getMonth()) : false;
+      });
+    }
+
     if (filters.keywordSearch) {
       const searchTerm = filters.keywordSearch.toLowerCase();
       filteredData = filteredData.filter(row => {
-        const narration = (row[workbookData.columnMappings['Narration']] || '').toLowerCase();
-        const account = (row[workbookData.columnMappings['Account Name']] || '').toLowerCase();
+        const narration = getRowValue(row, 'Narration');
+        const account = getRowValue(row, 'Account Name');
         return narration.includes(searchTerm) || account.includes(searchTerm);
       });
     }
 
     // Apply amount filters
+    const parseAmount = (value: unknown) => {
+      const parsed = parseFloat(String(value || '').replace(/[^0-9.-]+/g, ''));
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
     if (filters.customAmount) {
       const threshold = parseFloat(filters.customAmount);
       filteredData = filteredData.filter(row => {
-        const debit = parseFloat(row[workbookData.columnMappings['Debit']] || '0');
-        const credit = parseFloat(row[workbookData.columnMappings['Credit']] || '0');
+        const debit = parseAmount(row[workbookData.columnMappings['Debit']]);
+        const credit = parseAmount(row[workbookData.columnMappings['Credit']]);
         return debit >= threshold || credit >= threshold;
       });
     }
 
-    // Apply account series filters (simplified - checking if account name contains certain keywords)
-    if (filters.accountAssets || filters.accountLiabilities || filters.accountEquity || 
+    if (filters.amountAbove500k) {
+      filteredData = filteredData.filter(row => {
+        const debit = parseAmount(row[workbookData.columnMappings['Debit']]);
+        const credit = parseAmount(row[workbookData.columnMappings['Credit']]);
+        return debit >= 500000 || credit >= 500000;
+      });
+    }
+
+    if (filters.topTenPercent) {
+      const ordered = [...filteredData].sort((a, b) => {
+        const aAmt = Math.max(parseAmount(a[workbookData.columnMappings['Debit']]), parseAmount(a[workbookData.columnMappings['Credit']]));
+        const bAmt = Math.max(parseAmount(b[workbookData.columnMappings['Debit']]), parseAmount(b[workbookData.columnMappings['Credit']]));
+        return bAmt - aAmt;
+      });
+      const topCount = Math.max(1, Math.floor(ordered.length * 0.1));
+      const topThreshold = ordered[topCount - 1] ? Math.max(parseAmount(ordered[topCount - 1][workbookData.columnMappings['Debit']]), parseAmount(ordered[topCount - 1][workbookData.columnMappings['Credit']])) : 0;
+      filteredData = filteredData.filter(row => {
+        const amount = Math.max(parseAmount(row[workbookData.columnMappings['Debit']]), parseAmount(row[workbookData.columnMappings['Credit']]));
+        return amount >= topThreshold;
+      });
+    }
+
+    if (filters.accountAssets || filters.accountLiabilities || filters.accountEquity ||
         filters.accountRevenue || filters.accountCOGS || filters.accountExpenses) {
       filteredData = filteredData.filter(row => {
-        const account = (row[workbookData.columnMappings['Account Name']] || '').toLowerCase();
+        const account = getRowValue(row, 'Account Name');
         if (filters.accountAssets && account.includes('asset')) return true;
         if (filters.accountLiabilities && account.includes('liabilit')) return true;
         if (filters.accountEquity && account.includes('equity')) return true;
-        if (filters.accountRevenue && account.includes('revenue') || account.includes('income')) return true;
+        if (filters.accountRevenue && (account.includes('revenue') || account.includes('income'))) return true;
         if (filters.accountCOGS && account.includes('cost') && account.includes('goods')) return true;
         if (filters.accountExpenses && account.includes('expens')) return true;
+        return false;
+      });
+    }
+
+    if (filters.voucherJournal || filters.voucherPayment || filters.voucherReceipt || filters.voucherContra || filters.voucherOther) {
+      filteredData = filteredData.filter(row => {
+        const voucherType = getRowValue(row, 'Voucher Type');
+        if (filters.voucherJournal && voucherType.includes('journal')) return true;
+        if (filters.voucherPayment && voucherType.includes('payment')) return true;
+        if (filters.voucherReceipt && voucherType.includes('receipt')) return true;
+        if (filters.voucherContra && voucherType.includes('contra')) return true;
+        if (filters.voucherOther && voucherType.includes('other')) return true;
+        return false;
+      });
+    }
+
+    if (filters.currencyINR || filters.currencyUSD || filters.currencyEUR || filters.currencyGBP) {
+      filteredData = filteredData.filter(row => {
+        const currency = getRowValue(row, 'Currency');
+        if (filters.currencyINR && currency.includes('inr')) return true;
+        if (filters.currencyUSD && currency.includes('usd')) return true;
+        if (filters.currencyEUR && currency.includes('eur')) return true;
+        if (filters.currencyGBP && currency.includes('gbp')) return true;
         return false;
       });
     }
@@ -317,11 +453,25 @@ export default function Dashboard({ embedded = false }: DashboardProps) {
   const removeFilter = (filterId: string) => {
     const newFilters = activeFilters.filter(f => f.id !== filterId);
     setActiveFilters(newFilters);
-    if (newFilters.length === 0) {
+    if (newFilters.length === 0 && workbookData) {
+      const mappedTransactions: Transaction[] = workbookData.csvData.map((row: any, index: number) => ({
+        id: String(index + 1),
+        date: row[workbookData.columnMappings['Date']] || '',
+        voucherNo: row[workbookData.columnMappings['Journal ID']] || '',
+        account: row[workbookData.columnMappings['Account Name']] || '',
+        narration: row[workbookData.columnMappings['Narration']] || '',
+        debit: row[workbookData.columnMappings['Debit']] ? `₹${Number(row[workbookData.columnMappings['Debit']]).toLocaleString()}` : '',
+        credit: row[workbookData.columnMappings['Credit']] ? `₹${Number(row[workbookData.columnMappings['Credit']]).toLocaleString()}` : '',
+        balance: '',
+        currency: 'INR',
+        scrutinyCategory: '',
+        scrutinyReason: '',
+      }));
+
       setTabs(prevTabs =>
         prevTabs.map(tab =>
           tab.id === activeTabId
-            ? { ...tab, transactions: [], lastRefreshed: null }
+            ? { ...tab, transactions: mappedTransactions, lastRefreshed: new Date() }
             : tab
         )
       );
