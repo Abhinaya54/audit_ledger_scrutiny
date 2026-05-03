@@ -439,13 +439,28 @@ export default function FlaggedTransactionsPage({
     rows = rows.filter((row) => {
       if (!appliedFilters.accountSeries) return true;
       const account = getRowValue(row, ['account', 'Account', 'ledger_name']);
-      return account.includes(appliedFilters.accountSeries);
+      return account.toLowerCase().includes(appliedFilters.accountSeries.toLowerCase());
     });
 
     rows = rows.filter((row) => {
       if (!appliedFilters.financialYear) return true;
       const year = getRowValue(row, ['fiscal_year', 'Financial Year', 'date', 'Date']);
       return year.toLowerCase().includes(appliedFilters.financialYear.toLowerCase());
+    });
+
+    rows = rows.filter((row) => {
+      if (appliedFilters.quarter === 'all' || !appliedFilters.quarter) return true;
+      const dateValue = getRowValue(row, ['date', 'Date', 'transaction_date', 'Transaction Date']);
+      const parsed = new Date(dateValue);
+      if (Number.isNaN(parsed.getTime())) return true;
+      const month = parsed.getMonth();
+      const quarterMap: Record<string, number[]> = {
+        q1: [0, 1, 2],
+        q2: [3, 4, 5],
+        q3: [6, 7, 8],
+        q4: [9, 10, 11],
+      };
+      return quarterMap[appliedFilters.quarter]?.includes(month) ?? true;
     });
 
     rows = rows.filter((row) => {
