@@ -54,7 +54,7 @@ export default function DataIngestionWorkspace() {
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
 
   // Preview data from schema preview
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const previewData: any[] = [];
   const [parsedCsvData, setParsedCsvData] = useState<any[]>([]);
 
   // Data Health Metrics from real analysis
