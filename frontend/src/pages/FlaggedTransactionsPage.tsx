@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 
-import type { FlaggedRow, ScrutinyResponse } from '../types/scrutiny';
-import { formatNumber } from '../utils/format';
+import type { FlaggedRow, ScrutinyResponse } from '../../types/scrutiny';
+import { formatNumber } from '../../utils/format';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type WorkspaceTab = 'overview' | 'investigation' | 'documentation';

@@ -14,27 +14,23 @@ It provides:
 
 Repository root:
 
-- `audit/` : application source
-
-Application source:
-
-- `audit/backend/` : FastAPI backend
-- `audit/frontend/` : React + Vite frontend
+- `backend/` : FastAPI backend
+- `frontend/` : React + Vite frontend
 
 Backend key folders:
 
-- `audit/backend/main.py` : FastAPI app entrypoint
-- `audit/backend/routers/` : API routes (`/api/auth`, `/api/scrutiny`, `/api/workbooks`)
-- `audit/backend/services/` : business/service layer
-- `audit/backend/scrutiny/` : ingestion, rule engine, ML, export
-- `audit/backend/tests/` : pytest tests
+- `backend/main.py` : FastAPI app entrypoint
+- `backend/routers/` : API routes (`/api/auth`, `/api/scrutiny`, `/api/workbooks`)
+- `backend/services/` : business/service layer
+- `backend/scrutiny/` : ingestion, rule engine, ML, export
+- `backend/tests/` : pytest tests
 
 Frontend key folders:
 
-- `audit/frontend/src/pages/` : page-level UI
-- `audit/frontend/src/components/` : reusable UI components
-- `audit/frontend/src/api/` : backend API clients
-- `audit/frontend/src/types/` : TypeScript models
+- `frontend/src/pages/` : page-level UI
+- `frontend/src/components/` : reusable UI components
+- `frontend/src/api/` : backend API clients
+- `frontend/src/types/` : TypeScript models
 
 ## Prerequisites
 
@@ -56,13 +52,13 @@ python -m venv .venv
 2. Install backend dependencies
 
 ```powershell
-pip install -r audit/backend/requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 3. Install frontend dependencies
 
 ```powershell
-cd audit/frontend
+cd frontend
 npm install
 ```
 
@@ -80,7 +76,7 @@ Set these before running backend if you use auth/workbook persistence:
 ### Run Backend API
 
 ```powershell
-cd audit/backend
+cd backend
 python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -93,7 +89,7 @@ API base URL:
 Open a second terminal:
 
 ```powershell
-cd audit/frontend
+cd frontend
 npm run dev
 ```
 
@@ -106,14 +102,14 @@ Frontend dev URL:
 ### Frontend build
 
 ```powershell
-cd audit/frontend
+cd frontend
 npm run build
 ```
 
 ### Backend tests
 
 ```powershell
-cd audit/backend
+cd backend
 python -m pytest -q
 ```
 
@@ -176,4 +172,4 @@ and fuzzy fallback for inconsistent headers.
 - Frontend documentation editor uses Quill.
 - PDF export is handled in frontend using `jspdf`.
 - If you change frontend dependencies and hit Vite optimize cache errors,
-  clear `audit/frontend/node_modules/.vite` and restart `npm run dev`.
+  clear `frontend/node_modules/.vite` and restart `npm run dev`.

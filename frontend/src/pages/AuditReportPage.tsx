@@ -2,8 +2,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as ReTooltip, ResponsiveContainer,
 } from 'recharts';
-import type { ScrutinyResponse, FlaggedRow } from '../types/scrutiny';
-import { formatNumber, formatCurrency } from '../utils/format';
+import type { ScrutinyResponse, FlaggedRow } from '../../types/scrutiny';
+import { formatNumber, formatCurrency } from '../../utils/format';
 
 /* ── Display helpers ── */
 const CATEGORY_LABELS: Record<string, string> = {

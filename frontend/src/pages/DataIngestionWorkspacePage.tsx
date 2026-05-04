@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { previewSchema } from '../api/scrutinyApi';
-import type { SchemaPreviewResponse } from '../types/scrutiny';
-import type { SaveWorkbookEntityConfigPayload, WorkbookEntityConfig } from '../types/workbook';
-import { formatNumber } from '../utils/format';
+import { previewSchema } from '../../api/scrutinyApi';
+import type { SchemaPreviewResponse } from '../../types/scrutiny';
+import type { SaveWorkbookEntityConfigPayload, WorkbookEntityConfig } from '../../types/workbook';
+import { formatNumber } from '../../utils/format';
 
 interface DataIngestionWorkspacePageProps {
   initialConfig?: WorkbookEntityConfig | null;
