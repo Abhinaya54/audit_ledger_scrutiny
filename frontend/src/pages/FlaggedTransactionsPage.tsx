@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 
-import type { FlaggedRow, ScrutinyResponse } from '../../types/scrutiny';
-import { formatNumber } from '../../utils/format';
+import type { FlaggedRow, ScrutinyResponse } from '../types/scrutiny';
+import { formatNumber } from '../utils/format';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type WorkspaceTab = 'overview' | 'investigation' | 'documentation';
@@ -403,7 +403,7 @@ export default function FlaggedTransactionsPage({
   }
 
   const flaggedRows = results.flagged_rows;
-  const totalExposure = flaggedRows.reduce((acc, row) => acc + Math.abs(Number(row.amount) || 0), 0);
+  const totalExposure = flaggedRows.reduce((acc: number, row: FlaggedRow) => acc + Math.abs(Number(row.amount) || 0), 0);
   const risk = computeRiskBuckets(flaggedRows);
   const controls = buildControls(flaggedRows);
   const anomalyEvidenceRows = [...flaggedRows].sort((a, b) => Math.abs(Number(b.amount) || 0) - Math.abs(Number(a.amount) || 0));

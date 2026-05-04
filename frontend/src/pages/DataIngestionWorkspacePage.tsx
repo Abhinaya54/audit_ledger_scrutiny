@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { previewSchema } from '../../api/scrutinyApi';
-import type { SchemaPreviewResponse } from '../../types/scrutiny';
-import type { SaveWorkbookEntityConfigPayload, WorkbookEntityConfig } from '../../types/workbook';
-import { formatNumber } from '../../utils/format';
+import { previewSchema } from '../api/scrutinyApi';
+import type { SchemaPreviewResponse } from '../types/scrutiny';
+import type { SaveWorkbookEntityConfigPayload, WorkbookEntityConfig } from '../types/workbook';
+import { formatNumber } from '../utils/format';
 
 interface DataIngestionWorkspacePageProps {
   initialConfig?: WorkbookEntityConfig | null;
@@ -459,7 +459,7 @@ export default function DataIngestionWorkspacePage({
                           className="w-full border border-slate-300 px-3 py-2 text-lg"
                         >
                           <option value="">Select column</option>
-                          {(preview.original_columns || []).map((column) => (
+                          {(preview.original_columns || []).map((column: string) => (
                             <option key={column} value={column}>
                               {column}
                             </option>
@@ -490,7 +490,7 @@ export default function DataIngestionWorkspacePage({
                     </tr>
                   </thead>
                   <tbody>
-                    {sampleRows.map((row, idx) => (
+                    {sampleRows.map((row: Record<string, any>, idx: number) => (
                       <tr key={idx} className="border-b border-slate-100 last:border-b-0">
                         {dataPreviewColumns.map((field) => {
                           const mappedColumn = columnMapping[field];

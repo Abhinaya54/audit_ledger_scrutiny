@@ -2,9 +2,9 @@ import {
   PieChart, Pie, Cell, Tooltip as ReTooltip, Legend,
   LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
 } from 'recharts';
-import type { ScrutinyResponse, FlaggedRow } from '../../types/scrutiny';
+import type { ScrutinyResponse, FlaggedRow } from '../types/scrutiny';
 import MetricCard from '../components/common/MetricCard';
-import { formatNumber, formatCurrency } from '../../utils/format';
+import { formatNumber, formatCurrency } from '../utils/format';
 
 interface DashboardPageProps {
   results: ScrutinyResponse | null;

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { AuthUser } from '../../types/auth';
+import type { AuthUser } from '../types/auth';
 import { createWorkbook, getWorkbooks } from '../../api/workbooksApi';
 import type { Workbook } from '../../types/workbook';
 
