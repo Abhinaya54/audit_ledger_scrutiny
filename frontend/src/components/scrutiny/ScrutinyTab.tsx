@@ -6,7 +6,7 @@ import SummaryCards from './SummaryCards';
 import CategoryChart from './CategoryChart';
 import LiveFilters, { defaultFilters, applyFilters, getSeverity } from './LiveFilters';
 import type { FilterState } from './LiveFilters';
-import { analyzeFile, exportReport, previewSchema } from '../../api/scrutinyApi';
+import { scrutinyApi } from '../../api/scrutinyApi';
 import { triggerDownload } from '../../utils/format';
 import type { ScrutinyResponse, FlaggedRow, SchemaPreviewResponse } from '../../types/scrutiny';
 
@@ -37,7 +37,7 @@ export default function ScrutinyTab() {
     setResults(null);
     setFilters(defaultFilters());
     try {
-      const data = await analyzeFile(file, useMl, contamination);
+      const data = await scrutinyApi.analyze(file, useMl, contamination);
       setResults(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Analysis failed');
@@ -52,7 +52,7 @@ export default function ScrutinyTab() {
     setMappingError(null);
     setMapping(null);
     try {
-      const data = await previewSchema(file);
+      const data = await scrutinyApi.previewSchema(file);
       setMapping(data);
     } catch (e: unknown) {
       setMappingError(e instanceof Error ? e.message : 'Could not generate mapping preview');
@@ -73,7 +73,7 @@ export default function ScrutinyTab() {
     if (!file) return;
     setExporting(true);
     try {
-      const blob = await exportReport(file, useMl, contamination, true);
+      const blob = await scrutinyApi.exportReport(file, useMl, contamination, true);
       triggerDownload(blob, 'scrutiny_report.xlsx');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Export failed');

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { exportReport } from '../../api/scrutinyApi';
-import { getWorkbookById, ingestWorkbook, saveWorkbookEntityConfig } from '../../api/workbooksApi';
+import { scrutinyApi } from '../../api/scrutinyApi';
+import { workbooksApi } from '../../api/workbooksApi';
 import { triggerDownload } from '../../utils/format';
 import type { ScrutinyResponse } from '../../types/scrutiny';
 import type { SaveWorkbookEntityConfigPayload, Workbook, WorkbookEntityConfig } from '../../types/workbook';
@@ -294,7 +294,7 @@ export default function AppShell({
   useEffect(() => {
     const loadWorkbook = async () => {
       try {
-        const workbook = await getWorkbookById(authToken, workbookId);
+        const workbook = await workbooksApi.getWorkbook(workbookId);
         setEntityConfig(workbook.entity_config ?? null);
         setWorkbookDetails(workbook);
       } catch (e: unknown) {
@@ -328,7 +328,7 @@ export default function AppShell({
     setResults(null);
     setApprovalStatus('pending');
     try {
-      const data = await ingestWorkbook(authToken, workbookId, activeFile, true, contamination);
+      const data = await scrutinyApi.analyze(activeFile, true, contamination);
       setResults(data);
       setPage('results');
     } catch (e: unknown) {
@@ -343,7 +343,7 @@ export default function AppShell({
     setSavingEntityConfig(true);
     setEntityConfigError(null);
     try {
-      const workbook = await saveWorkbookEntityConfig(authToken, workbookId, payload);
+      const workbook = await workbooksApi.saveEntityConfig(workbookId, payload);
       setEntityConfig(workbook.entity_config ?? null);
       setWorkbookDetails(workbook);
       setPage('ingestion');
@@ -364,7 +364,7 @@ export default function AppShell({
 
     setExporting(true);
     try {
-      const blob = await exportReport(file, true, contamination, true);
+      const blob = await scrutinyApi.exportReport(file, true, contamination, true);
       triggerDownload(blob, 'audit_report.xlsx');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Export failed');

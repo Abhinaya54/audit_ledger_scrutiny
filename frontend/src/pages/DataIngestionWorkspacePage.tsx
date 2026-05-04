@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { previewSchema } from '../api/scrutinyApi';
+import { scrutinyApi } from '../api/scrutinyApi';
 import type { SchemaPreviewResponse } from '../types/scrutiny';
 import type { SaveWorkbookEntityConfigPayload, WorkbookEntityConfig } from '../types/workbook';
 import { formatNumber } from '../utils/format';
@@ -223,7 +223,7 @@ export default function DataIngestionWorkspacePage({
     setPreviewLoading(true);
     setPreviewError(null);
     try {
-      const payload = await previewSchema(file);
+      const payload = await scrutinyApi.previewSchema(file);
       setPreview(payload);
       setColumnMapping(autoMapColumns(payload.original_columns ?? []));
     } catch (err: unknown) {

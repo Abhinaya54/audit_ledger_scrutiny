@@ -2,8 +2,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as ReTooltip, ResponsiveContainer,
 } from 'recharts';
-import type { ScrutinyResponse, FlaggedRow } from '../../types/scrutiny';
-import { formatNumber, formatCurrency } from '../../utils/format';
+import type { ScrutinyResponse, FlaggedRow } from '../types/scrutiny';
+import { formatNumber, formatCurrency } from '../utils/format';
 
 /* ── Display helpers ── */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -46,7 +46,7 @@ function getTopAccounts(rows: FlaggedRow[], n = 5) {
 function generateInsights(results: ScrutinyResponse): string[] {
   const { summary, category_counts, flagged_rows } = results;
   const insights: string[] = [];
-  const cats = Object.fromEntries(category_counts.map((c) => [c.category, c.count]));
+  const cats = Object.fromEntries(category_counts.map((c: { category: string; count: number }) => [c.category, c.count]));
 
   if (summary.pct_flagged > 15)
     insights.push(`High anomaly rate detected — ${summary.pct_flagged}% of transactions are suspicious. Immediate auditor review is recommended.`);
@@ -74,7 +74,7 @@ function generateInsights(results: ScrutinyResponse): string[] {
     insights.push(`${cats['Weak Narration'].toLocaleString()} entries have insufficient narration. Complete descriptions are essential for audit trail compliance.`);
 
   /* Total amount insight */
-  const totalAmt = flagged_rows.reduce((s, r) => s + Math.abs(r.amount), 0);
+  const totalAmt = flagged_rows.reduce((s: number, r: FlaggedRow) => s + Math.abs(r.amount), 0);
   if (totalAmt > 0)
     insights.push(`Total value of suspicious transactions: ${formatCurrency(totalAmt)}. High-value flagged entries should receive priority review.`);
 
@@ -119,7 +119,7 @@ export default function AuditReportPage({ results, exporting, onUploadClick, onE
   const topAccounts = getTopAccounts(flagged_rows);
   const topCategory = [...category_counts].sort((a, b) => b.count - a.count)[0];
   const peakMonth = trendData.reduce((mx, d) => d.flags > mx.flags ? d : mx, { month: '—', flags: 0 });
-  const totalAmt = flagged_rows.reduce((s, r) => s + Math.abs(r.amount), 0);
+  const totalAmt = flagged_rows.reduce((s: number, r: FlaggedRow) => s + Math.abs(r.amount), 0);
   const insights = generateInsights(results);
   const riskPct = summary.pct_flagged;
   const riskLevel = riskPct < 5 ? 'LOW' : riskPct < 15 ? 'MEDIUM' : 'HIGH';

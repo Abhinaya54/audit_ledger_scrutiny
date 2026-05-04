@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { AuthUser } from '../types/auth';
-import { createWorkbook, getWorkbooks } from '../../api/workbooksApi';
-import type { Workbook } from '../../types/workbook';
+import { workbooksApi } from '../api/workbooksApi';
+import type { Workbook } from '../types/workbook';
 
 interface WorkbookRow {
   id: string;
@@ -116,7 +116,7 @@ export default function PostLoginWorkbooksPage({
       }
 
       try {
-        const rows = await getWorkbooks(token);
+        const rows = await workbooksApi.listWorkbooks();
         setWorkbooks(rows.map(mapWorkbookRow));
         setApiError(null);
       } catch (err: unknown) {
@@ -161,7 +161,7 @@ export default function PostLoginWorkbooksPage({
 
     setCreating(true);
     try {
-      const created = await createWorkbook(token, {
+      const created = await workbooksApi.createWorkbook({
         client_name: form.clientName.trim(),
         financial_year: form.financialYear.trim(),
         functional_currency: form.functionalCurrency,
