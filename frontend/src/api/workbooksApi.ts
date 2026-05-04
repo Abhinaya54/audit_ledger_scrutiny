@@ -1,22 +1,8 @@
 import { apiClient } from './client';
 import { authApi } from './authApi';
+import type { Workbook } from '../types/workbook';
 
-export interface Workbook {
-  id: string;
-  client_name: string;
-  financial_year: string;
-  functional_currency: string;
-  engagement_type?: string;
-  status?: string;
-  risk_score?: number;
-  has_entity_config?: boolean;
-  entity_config?: Record<string, any>;
-  column_mappings?: Record<string, string>;
-  review_rows?: any[];
-  analysis_summary?: Record<string, any>;
-  category_counts?: any[];
-  last_modified?: string;
-}
+export type { Workbook };
 
 function _token(): string {
   const token = authApi.getToken();
@@ -34,7 +20,7 @@ export const workbooksApi = {
     client_name: string;
     financial_year: string;
     functional_currency: string;
-    engagement_type: string;
+    engagement_type?: string;
   }): Promise<Workbook> => {
     return apiClient.post('/api/workbooks', data, _token());
   },

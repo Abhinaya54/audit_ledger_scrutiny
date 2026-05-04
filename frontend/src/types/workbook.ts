@@ -3,8 +3,10 @@ export interface WorkbookEntityConfig {
   financial_year: string;
   ledger_type: string;
   functional_currency: string;
-  reporting_currency?: string | null;
-  company_code?: string | null;
+  reporting_currency?: string;
+  company_code?: string;
+  header_row?: number;
+  column_mappings?: Record<string, string>;
 }
 
 export interface WorkbookSummary {
@@ -20,13 +22,16 @@ export interface Workbook {
   client_name: string;
   financial_year: string;
   functional_currency: string;
-  engagement_type?: string | null;
+  engagement_type?: string;
   status: 'In Progress' | 'Draft' | 'Completed';
   last_modified: string;
   risk_score: number;
   has_entity_config?: boolean;
-  entity_config?: WorkbookEntityConfig | null;
-  latest_summary?: WorkbookSummary | null;
+  entity_config?: WorkbookEntityConfig;
+  column_mappings?: Record<string, string>;
+  review_rows?: any[];
+  analysis_summary?: WorkbookSummary;
+  category_counts?: any[];
 }
 
 export interface CreateWorkbookPayload {

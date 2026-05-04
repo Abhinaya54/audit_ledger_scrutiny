@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 
 
 class WorkbookCreateRequest(BaseModel):
@@ -45,7 +45,7 @@ class WorkbookOut(BaseModel):
     financial_year: str
     functional_currency: str
     engagement_type: Optional[str] = None
-    status: str
+    status: Literal['Draft', 'In Progress', 'Completed']
     last_modified: str
     risk_score: int
     has_entity_config: bool = False
