@@ -52,7 +52,7 @@ def extract_features(df: pd.DataFrame) -> pd.DataFrame:
 
     # ── Amount features ───────────────────────────────────────────────────────
     features["amount"]        = df["amount"]
-    features["log_amount"]    = np.log1p(df["amount"])
+    features["log_amount"]    = np.log1p(df["amount"].abs())
     features["is_round_1000"] = ((df["amount"] % 1000 == 0) & (df["amount"] != 0)).astype(int)
     features["is_round_10000"]= ((df["amount"] % 10000 == 0) & (df["amount"] != 0)).astype(int)
 
@@ -79,4 +79,5 @@ def extract_features(df: pd.DataFrame) -> pd.DataFrame:
     acct_std  = acct_std.replace(0, 1.0)
     features["amount_zscore"] = (df["amount"] - acct_mean) / acct_std
 
-    return features[FEATURE_COLUMNS].fillna(0.0)
+    result = features[FEATURE_COLUMNS].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    return result
