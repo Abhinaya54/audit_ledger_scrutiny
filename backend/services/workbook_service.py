@@ -91,7 +91,11 @@ def create_workbook_for_user(
 
 def list_workbooks_for_user(user_id: str) -> List[Dict[str, Any]]:
     try:
-        return list(_workbooks_collection().find({"owner_user_id": user_id}).sort("updated_at", -1))
+        return list(
+            _workbooks_collection()
+            .find({"owner_user_id": user_id, "is_deleted": {"$ne": True}})
+            .sort("updated_at", -1)
+        )
     except PyMongoError as exc:
         raise WorkbookError("Unable to fetch workbooks. Database operation failed.") from exc
 
@@ -102,13 +106,32 @@ def get_workbook_for_user(user_id: str, workbook_id: str) -> Dict[str, Any]:
         raise WorkbookError("Invalid workbook id.")
 
     try:
-        doc = _workbooks_collection().find_one({"_id": oid, "owner_user_id": user_id})
+        doc = _workbooks_collection().find_one(
+            {"_id": oid, "owner_user_id": user_id, "is_deleted": {"$ne": True}}
+        )
     except PyMongoError as exc:
         raise WorkbookError("Unable to fetch workbook. Database operation failed.") from exc
 
     if not doc:
         raise WorkbookError("Workbook not found.")
     return doc
+
+
+def delete_workbook_for_user(user_id: str, workbook_id: str) -> None:
+    oid = _coerce_object_id(workbook_id)
+    if not oid:
+        raise WorkbookError("Invalid workbook id.")
+
+    now = datetime.now(timezone.utc)
+    try:
+        result = _workbooks_collection().update_one(
+            {"_id": oid, "owner_user_id": user_id, "is_deleted": {"$ne": True}},
+            {"$set": {"is_deleted": True, "deleted_at": now, "updated_at": now}},
+        )
+        if result.modified_count == 0:
+            raise WorkbookError("Workbook not found.")
+    except PyMongoError as exc:
+        raise WorkbookError("Unable to delete workbook. Database operation failed.") from exc
 
 
 def save_entity_config_for_user(user_id: str, workbook_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:

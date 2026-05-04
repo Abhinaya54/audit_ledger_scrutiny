@@ -122,6 +122,7 @@ export const apiClient = {
       throw new Error('Invalid or expired token');
     }
     if (!response.ok) throw new Error(await _parseError(response));
+    if (response.status === 204) return null;
     return response.json();
   },
 };
