@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, ChevronDown, Loader2 } from 'lucide-react';
+import { Plus, ChevronDown, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { workbooksApi } from '../../api/workbooksApi';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +19,8 @@ export default function Home() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [workbooks, setWorkbooks] = useState<WorkbookDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [workbookToDelete, setWorkbookToDelete] = useState<WorkbookDisplay | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const fetchWorkbooks = async () => {
@@ -84,6 +86,22 @@ export default function Home() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleDeleteWorkbook = async () => {
+    if (!workbookToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await workbooksApi.deleteWorkbook(workbookToDelete.id);
+      setWorkbooks((prev) => prev.filter((w) => w.id !== workbookToDelete.id));
+      toast.success('Workbook deleted');
+      setWorkbookToDelete(null);
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to delete workbook');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -160,19 +178,20 @@ export default function Home() {
                   <th className="px-6 py-3 text-left text-xs text-gray-600">Status</th>
                   <th className="px-6 py-3 text-left text-xs text-gray-600">Last Modified</th>
                   <th className="px-6 py-3 text-left text-xs text-gray-600">Risk Score</th>
+                  <th className="px-6 py-3 text-right text-xs text-gray-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <Loader2 className="w-6 h-6 animate-spin text-[#095859] mx-auto mb-2" />
                       <p className="text-sm text-gray-600">Loading workbooks...</p>
                     </td>
                   </tr>
                 ) : workbooks.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
                       No workbooks found. Create your first workbook to get started.
                     </td>
                   </tr>
@@ -199,6 +218,19 @@ export default function Home() {
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWorkbookToDelete(workbook);
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete Workbook"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -229,6 +261,40 @@ export default function Home() {
             }
           }}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {workbookToDelete && (
+        <div className="fixed inset-0 z-50 backdrop-blur-md bg-white bg-opacity-10 flex items-center justify-center p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg text-gray-900">Delete Workbook?</h2>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to remove <span className="font-semibold text-gray-800">"{workbookToDelete.clientName}"</span>? 
+                You can contact support if you need to recover it later.
+              </p>
+              <div className="flex gap-3 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setWorkbookToDelete(null)}
+                  className="flex-1 px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteWorkbook()}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

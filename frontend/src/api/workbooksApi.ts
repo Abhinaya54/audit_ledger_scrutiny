@@ -49,5 +49,10 @@ export const workbooksApi = {
 
     return apiClient.postFormData(`/api/workbooks/${workbookId}/ingest`, formData, _token());
   },
+
+  // Delete a workbook (soft delete)
+  deleteWorkbook: async (workbookId: string): Promise<void> => {
+    return apiClient.delete(`/api/workbooks/${workbookId}`, _token());
+  },
 };
 

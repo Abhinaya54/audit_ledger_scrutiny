@@ -10,6 +10,7 @@ from services.scrutiny_service import run_analysis, save_upload
 from services.workbook_service import (
     WorkbookError,
     create_workbook_for_user,
+    delete_workbook_for_user,
     get_workbook_for_user,
     list_workbooks_for_user,
     save_analysis_for_user,
@@ -163,3 +164,14 @@ async def ingest_workbook_file(
             os.unlink(tmp_path)
         except Exception:
             pass
+@router.delete("/{workbook_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workbook(workbook_id: str, user_id: str = Depends(_current_user_id)):
+    try:
+        delete_workbook_for_user(user_id, workbook_id)
+    except WorkbookError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail) from exc
+        if _is_server_error(detail):
+            raise HTTPException(status_code=503, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
