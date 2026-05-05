@@ -203,6 +203,15 @@ def save_analysis_for_user(
     }
 
     try:
+        _get_db().transactions.delete_many({"workbook_id": doc["_id"]})
+        if flagged_rows:
+            flagged_docs = [{"workbook_id": doc["_id"], "type": "flagged", "data": r} for r in flagged_rows]
+            _get_db().transactions.insert_many(flagged_docs)
+            
+        if review_rows:
+            review_docs = [{"workbook_id": doc["_id"], "type": "review", "data": r} for r in review_rows]
+            _get_db().transactions.insert_many(review_docs)
+
         _workbooks_collection().update_one(
             {"_id": doc["_id"], "owner_user_id": user_id},
             {
@@ -211,8 +220,6 @@ def save_analysis_for_user(
                     "risk_score": risk_score,
                     "latest_summary": latest_summary,
                     "latest_category_counts": category_counts,
-                    "flagged_rows": flagged_rows or [],
-                    "review_rows": review_rows or [],
                     "updated_at": now,
                 }
             },
@@ -224,9 +231,13 @@ def save_analysis_for_user(
     doc["risk_score"] = risk_score
     doc["latest_summary"] = latest_summary
     doc["latest_category_counts"] = category_counts
-    doc["flagged_rows"] = flagged_rows or []
-    doc["review_rows"] = review_rows or []
     doc["updated_at"] = now
+    
+    # We leave the rows empty in the returned doc to avoid memory overhead
+    # since it's just returning from the ingest endpoint
+    doc["flagged_rows"] = []
+    doc["review_rows"] = []
+    
     return doc
 
 
@@ -269,7 +280,12 @@ def query_transactions_for_user(
     doc = get_workbook_for_user(user_id, workbook_id)
     
     # Get all transactions (flagged rows contain the anomalies)
-    all_rows = doc.get("flagged_rows", [])
+    if "flagged_rows" in doc and doc["flagged_rows"]:
+        all_rows = doc["flagged_rows"]
+    else:
+        cursor = _get_db().transactions.find({"workbook_id": doc["_id"], "type": "flagged"})
+        all_rows = [c.get("data", {}) for c in cursor]
+        
     if not all_rows:
         return []
     
@@ -320,7 +336,7 @@ def query_transactions_for_user(
     return filtered_rows
 
 
-def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
+def to_public_workbook(doc: Dict[str, Any], include_rows: bool = True) -> Dict[str, Any]:
     updated_at = doc.get("updated_at")
     if isinstance(updated_at, datetime):
         last_modified = updated_at.astimezone(timezone.utc).isoformat()
@@ -355,7 +371,17 @@ def to_public_workbook(doc: Dict[str, Any]) -> Dict[str, Any]:
         category_counts = doc.get("latest_category_counts", [])
 
     column_mappings = doc.get("column_mappings") if isinstance(doc.get("column_mappings"), dict) else {}
-    review_rows = doc.get("review_rows") if isinstance(doc.get("review_rows"), list) else None
+    
+    review_rows = None
+    if include_rows:
+        if "review_rows" in doc and isinstance(doc["review_rows"], list) and doc["review_rows"]:
+            review_rows = doc["review_rows"]
+        else:
+            try:
+                cursor = _get_db().transactions.find({"workbook_id": doc["_id"], "type": "review"})
+                review_rows = [c.get("data", {}) for c in cursor]
+            except Exception:
+                review_rows = []
 
     return {
         "id": str(doc.get("_id", "")),
