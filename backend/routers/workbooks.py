@@ -1,4 +1,5 @@
 import os
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -164,10 +165,58 @@ async def ingest_workbook_file(
             os.unlink(tmp_path)
         except Exception:
             pass
+
 @router.delete("/{workbook_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_workbook(workbook_id: str, user_id: str = Depends(_current_user_id)):
     try:
         delete_workbook_for_user(user_id, workbook_id)
+    except WorkbookError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail) from exc
+        if _is_server_error(detail):
+            raise HTTPException(status_code=503, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/{workbook_id}/transactions")
+def get_transactions(
+    workbook_id: str,
+    user_id: str = Depends(_current_user_id),
+):
+    """Get all flagged transactions for a workbook."""
+    try:
+        workbook = get_workbook_for_user(user_id, workbook_id)
+        flagged_rows = workbook.get("flagged_rows", [])
+        return {
+            "transactions": flagged_rows,
+            "count": len(flagged_rows),
+        }
+    except WorkbookError as exc:
+        detail = str(exc)
+        if "not found" in detail.lower():
+            raise HTTPException(status_code=404, detail=detail) from exc
+        if _is_server_error(detail):
+            raise HTTPException(status_code=503, detail=detail) from exc
+        raise HTTPException(status_code=400, detail=detail) from exc
+
+
+@router.post("/{workbook_id}/query")
+def query_transactions(
+    workbook_id: str,
+    filters: Dict[str, Any],
+    user_id: str = Depends(_current_user_id),
+):
+    """Query and filter transactions based on multiple criteria."""
+    try:
+        filtered_rows = query_transactions_for_user(user_id, workbook_id, filters)
+        return {
+            "transactions": filtered_rows,
+            "count": len(filtered_rows),
+            "filters_applied": filters,
+        }
     except WorkbookError as exc:
         detail = str(exc)
         if "not found" in detail.lower():

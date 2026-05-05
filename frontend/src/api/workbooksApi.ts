@@ -54,5 +54,18 @@ export const workbooksApi = {
   deleteWorkbook: async (workbookId: string): Promise<void> => {
     return apiClient.delete(`/api/workbooks/${workbookId}`, _token());
   },
+
+  // Get all flagged transactions for a workbook
+  getTransactions: async (workbookId: string): Promise<{ transactions: Record<string, any>[]; count: number }> => {
+    return apiClient.get(`/api/workbooks/${workbookId}/transactions`, _token());
+  },
+
+  // Query and filter transactions
+  queryTransactions: async (
+    workbookId: string,
+    filters: Record<string, any>
+  ): Promise<{ transactions: Record<string, any>[]; count: number; filters_applied: Record<string, any> }> => {
+    return apiClient.post(`/api/workbooks/${workbookId}/query`, filters, _token());
+  },
 };
 
