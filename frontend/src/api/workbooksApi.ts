@@ -49,5 +49,18 @@ export const workbooksApi = {
   deleteWorkbook: async (workbookId: string): Promise<void> => {
     return apiClient.delete(`/api/workbooks/${workbookId}`, _token());
   },
+
+  // Get paginated transactions for a workbook
+  getTransactions: async (
+    workbookId: string,
+    page: number = 1,
+    limit: number = 100,
+    transactionType: string = 'review'
+  ): Promise<any[]> => {
+    return apiClient.get(
+      `/api/workbooks/${workbookId}/transactions?page=${page}&limit=${limit}&transaction_type=${transactionType}`,
+      _token()
+    );
+  },
 };
 
