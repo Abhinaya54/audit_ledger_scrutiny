@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronLeft, Building2, Calendar, FileText, IndianRupee, Scale, Target } from 'lucide-react';
+import { ChevronLeft, Building2, FileText, Scale, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { workbooksApi, type CreateWorkbookPayload } from '../../api/workbooksApi';
 
