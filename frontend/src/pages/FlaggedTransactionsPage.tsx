@@ -282,23 +282,28 @@ function rowMatchesQuery(row: Record<string, unknown>, query: string): boolean {
     .map((value) => String(value ?? '').toLowerCase())
     .join(' ');
 
+  // Check amount filter (e.g., "above 500k", "over 100000")
   const amountMatch = trimmed.match(/(?:above|over|greater than)\s*₹?\s*([\d,]+)/i);
   if (amountMatch) {
     const threshold = Number(amountMatch[1].replace(/,/g, ''));
     if (Number.isFinite(threshold) && getRowAmount(row) <= threshold) {
-      return false;
+      return false; // Exclude row if amount doesn't meet the threshold
     }
   }
 
+  // Check text search tokens
   const tokens = trimmed
+    .replace(/(?:above|over|greater than)\s*₹?\s*[\d,]+/gi, '') // Remove amount filter from query
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
-    .filter((token) => token.length >= 3 && !['show', 'list', 'find', 'transaction', 'transactions', 'above', 'over'].includes(token));
+    .filter((token) => token.length >= 3 && !['show', 'list', 'find', 'transaction', 'transactions', 'above', 'over', 'than'].includes(token));
 
+  // If no text tokens left after removing amount filter, only amount filter was specified
   if (tokens.length === 0) {
-    return true;
+    return true; // Amount filter already passed
   }
 
+  // If text tokens exist, match ANY of them (OR logic)
   return tokens.some((token) => hay.includes(token));
 }
 
@@ -386,6 +391,16 @@ export default function FlaggedTransactionsPage({
       setActiveInvestigationTabId(investigationTabs[0]?.id ?? '');
     }
   }, [investigationTabs, activeInvestigationTabId]);
+
+  // Reset investigation tabs when dataset changes (Replace Dataset scenario)
+  useEffect(() => {
+    if (!results) return;
+    
+    const newTab = createWorkspace(1);
+    setInvestigationTabs([newTab]);
+    setActiveInvestigationTabId(newTab.id);
+    setTab('overview');
+  }, [results?.summary?.total_entries]); // Trigger reset when dataset size changes
 
   if (!results) {
     return (
