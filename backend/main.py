@@ -42,13 +42,23 @@ app = FastAPI(
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 # In production set ALLOWED_ORIGINS=https://yourdomain.com,https://app.yourdomain.com
-# Falls back to wildcard ["*"] for local development convenience.
+# Falls back to ["*"] for local development, but in production must be explicitly configured.
 _origins_env = os.environ.get("ALLOWED_ORIGINS", "")
-ALLOWED_ORIGINS = (
-    [o.strip() for o in _origins_env.split(",") if o.strip()]
-    if _origins_env and _origins_env != "*"
-    else ["*"]
-)
+if _origins_env and _origins_env != "*":
+    # Production: parse comma-separated list
+    ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
+elif _origins_env == "*":
+    # Explicit wildcard fallback
+    ALLOWED_ORIGINS = ["*"]
+else:
+    # Default: allow localhost and common development origins
+    ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "*",  # Fallback to wildcard for flexibility
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,6 +67,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["Content-Length", "Content-Type", "Content-Disposition"],
+    max_age=3600,
 )
 
 
