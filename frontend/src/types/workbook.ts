@@ -23,6 +23,11 @@ export interface Workbook {
   financial_year: string;
   functional_currency: string;
   engagement_type?: string;
+  assessment_year?: string;
+  industry_type?: string;
+  reporting_framework?: string;
+  tax_id?: string;
+  materiality_threshold?: number;
   status: 'In Progress' | 'Draft' | 'Completed';
   last_modified: string;
   risk_score: number;
@@ -39,6 +44,11 @@ export interface CreateWorkbookPayload {
   financial_year: string;
   functional_currency: string;
   engagement_type?: string;
+  assessment_year?: string;
+  industry_type?: string;
+  reporting_framework?: string;
+  tax_id?: string;
+  materiality_threshold?: number;
 }
 
 export interface SaveWorkbookEntityConfigPayload {

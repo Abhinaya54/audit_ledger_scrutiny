@@ -135,25 +135,48 @@ export default function RiskIntelligenceDashboard({
               <p className="text-sm text-gray-500 mt-1">Comprehensive risk analysis of uploaded ledger</p>
             </div>
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowReviewPanel(true)}
-                className="px-4 py-2 text-sm bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                Review Source Data
-              </button>
-              <button
-                onClick={() => navigate(`/data-ingestion?mode=replace&workbookId=${workbookId}`)}
-                className="px-4 py-2 text-sm bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-              >
-                <Upload className="w-4 h-4" />
-                Replace Dataset
-              </button>
+              {analysisSummary && (
+                <>
+                  <button
+                    onClick={() => setShowReviewPanel(true)}
+                    className="px-4 py-2 text-sm bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Review Source Data
+                  </button>
+                  <button
+                    onClick={() => navigate(`/data-ingestion?mode=replace&workbookId=${workbookId}`)}
+                    className="px-4 py-2 text-sm bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Replace Dataset
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        {/* Risk Score Banner */}
+        {!analysisSummary ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center mt-8">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-8 h-8 text-[#095859]" />
+            </div>
+            <h3 className="text-lg text-gray-900 font-medium mb-2">No Data Ingested</h3>
+            <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+              Upload your financial ledger dataset to begin the risk intelligence analysis. The system will automatically detect anomalies, categorize risks, and identify potential control points.
+            </p>
+            <button
+              onClick={() => navigate(`/data-ingestion?workbookId=${workbookId}`)}
+              className="px-6 py-3 text-sm bg-[#095859] text-white rounded-lg hover:bg-[#0B6B6A] transition-colors inline-flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Upload Dataset Now
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Risk Score Banner */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mb-8 flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500 mb-1">Overall Risk Score</p>
@@ -245,6 +268,8 @@ export default function RiskIntelligenceDashboard({
             </table>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

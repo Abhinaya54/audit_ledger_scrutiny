@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Workbook from "./pages/Workbook";
+import CreateEngagement from "./pages/CreateWorkbook";
 import DataIngestionWorkspace from "./pages/DataIngestionWorkspace";
 import RiskIntelligenceDashboard from "./pages/RiskIntelligenceDashboard";
 import Dashboard from "./pages/Dashboard";
@@ -33,6 +34,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Workbook />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/create-workbook",
+    element: (
+      <ProtectedRoute>
+        <CreateEngagement />
       </ProtectedRoute>
     ),
   },

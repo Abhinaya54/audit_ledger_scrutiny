@@ -15,7 +15,6 @@ interface WorkbookDisplay {
 export default function Home() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [workbooks, setWorkbooks] = useState<WorkbookDisplay[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,10 +34,10 @@ export default function Home() {
           lastModified: wb.last_modified ? new Date(wb.last_modified).toLocaleDateString() : '—',
           riskScore: wb.analysis_summary
             ? Math.round(
-                ((wb.analysis_summary.total_flagged || 0) /
-                  (wb.analysis_summary.total_entries || 1)) *
-                  100
-              )
+              ((wb.analysis_summary.total_flagged || 0) /
+                (wb.analysis_summary.total_entries || 1)) *
+              100
+            )
             : undefined,
         }));
         setWorkbooks(mapped);
@@ -160,11 +159,11 @@ export default function Home() {
               <p className="text-sm text-gray-600">Manage audit engagement workbooks</p>
             </div>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate('/create-workbook')}
               className="px-4 py-2 bg-[#095859] text-white rounded-lg hover:bg-[#0B6B6A] transition-colors flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              Create New Workbook
+              Create Audit Workbook
             </button>
           </div>
 
@@ -241,27 +240,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Create Workbook Modal */}
-      {showCreateModal && (
-        <CreateWorkbookModal
-          onClose={() => setShowCreateModal(false)}
-          onCreateWorkbook={async (data) => {
-            try {
-              const newWorkbook = await workbooksApi.createWorkbook({
-                client_name: data.clientName,
-                financial_year: data.financialYear,
-                functional_currency: data.functionalCurrency,
-                engagement_type: data.engagementType,
-              });
-              toast.success('Workbook created');
-              setShowCreateModal(false);
-              navigate(`/data-ingestion?workbookId=${newWorkbook.id}`);
-            } catch (error: any) {
-              toast.error(error?.message || 'Failed to create workbook');
-            }
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {workbookToDelete && (
@@ -272,7 +250,7 @@ export default function Home() {
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-600">
-                Are you sure you want to remove <span className="font-semibold text-gray-800">"{workbookToDelete.clientName}"</span>? 
+                Are you sure you want to remove <span className="font-semibold text-gray-800">"{workbookToDelete.clientName}"</span>?
                 You can contact support if you need to recover it later.
               </p>
               <div className="flex gap-3 pt-6">
@@ -300,124 +278,3 @@ export default function Home() {
   );
 }
 
-interface CreateWorkbookModalProps {
-  onClose: () => void;
-  onCreateWorkbook: (data: {
-    clientName: string;
-    financialYear: string;
-    functionalCurrency: string;
-    engagementType: string;
-  }) => void;
-}
-
-function CreateWorkbookModal({ onClose, onCreateWorkbook }: CreateWorkbookModalProps) {
-  const [clientName, setClientName] = useState('');
-  const [financialYear, setFinancialYear] = useState('');
-  const [functionalCurrency, setFunctionalCurrency] = useState('INR');
-  const [engagementType, setEngagementType] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    await onCreateWorkbook({
-      clientName,
-      financialYear,
-      functionalCurrency,
-      engagementType,
-    });
-    setIsSubmitting(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 backdrop-blur-md bg-white bg-opacity-10 flex items-center justify-center p-6">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg text-gray-900">Create New Workbook</h2>
-          <p className="text-sm text-gray-600 mt-1">Set up a new audit engagement workbook</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div>
-            <label htmlFor="clientName" className="block text-sm text-gray-700 mb-2">
-              Client Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="clientName"
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
-              placeholder="e.g., Acme Corporation Ltd."
-            />
-          </div>
-
-          <div>
-            <label htmlFor="financialYear" className="block text-sm text-gray-700 mb-2">
-              Financial Year <span className="text-red-500">*</span>
-            </label>
-            <input
-              id="financialYear"
-              type="text"
-              value={financialYear}
-              onChange={(e) => setFinancialYear(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
-              placeholder="e.g., FY 2023-24"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="functionalCurrency" className="block text-sm text-gray-700 mb-2">
-              Functional Currency <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="functionalCurrency"
-              value={functionalCurrency}
-              onChange={(e) => setFunctionalCurrency(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
-            >
-              <option value="INR">INR - Indian Rupee</option>
-              <option value="USD">USD - US Dollar</option>
-              <option value="EUR">EUR - Euro</option>
-              <option value="GBP">GBP - British Pound</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="engagementType" className="block text-sm text-gray-700 mb-2">
-              Engagement Type
-            </label>
-            <input
-              id="engagementType"
-              type="text"
-              value={engagementType}
-              onChange={(e) => setEngagementType(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#095859] focus:border-transparent"
-              placeholder="e.g., Statutory Audit (optional)"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-[#095859] text-white rounded-lg hover:bg-[#0B6B6A] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Creating...' : 'Create Workbook'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
