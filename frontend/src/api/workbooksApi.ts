@@ -1,8 +1,8 @@
 import { apiClient } from './client';
 import { authApi } from './authApi';
-import type { Workbook } from '../types/workbook';
+import type { Workbook, CreateWorkbookPayload } from '../types/workbook';
 
-export type { Workbook };
+export type { Workbook, CreateWorkbookPayload };
 
 function _token(): string {
   const token = authApi.getToken();
@@ -16,12 +16,7 @@ export const workbooksApi = {
   },
 
   // Create a new workbook
-  createWorkbook: async (data: {
-    client_name: string;
-    financial_year: string;
-    functional_currency: string;
-    engagement_type?: string;
-  }): Promise<Workbook> => {
+  createWorkbook: async (data: CreateWorkbookPayload): Promise<Workbook> => {
     return apiClient.post('/api/workbooks', data, _token());
   },
 

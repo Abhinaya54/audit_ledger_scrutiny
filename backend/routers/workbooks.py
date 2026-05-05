@@ -73,6 +73,11 @@ def create_workbook(payload: WorkbookCreateRequest, user_id: str = Depends(_curr
             financial_year=payload.financial_year,
             functional_currency=payload.functional_currency,
             engagement_type=payload.engagement_type,
+            assessment_year=payload.assessment_year,
+            industry_type=payload.industry_type,
+            reporting_framework=payload.reporting_framework,
+            tax_id=payload.tax_id,
+            materiality_threshold=payload.materiality_threshold,
         )
         return WorkbookOut(**to_public_workbook(row, include_rows=False))
     except WorkbookError as exc:
