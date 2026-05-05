@@ -7,6 +7,11 @@ class WorkbookCreateRequest(BaseModel):
     financial_year: str = Field(min_length=4, max_length=20)
     functional_currency: str = Field(min_length=2, max_length=80)
     engagement_type: Optional[str] = Field(default=None, max_length=120)
+    assessment_year: Optional[str] = Field(default=None, max_length=40)
+    industry_type: Optional[str] = Field(default=None, max_length=120)
+    reporting_framework: Optional[str] = Field(default=None, max_length=120)
+    tax_id: Optional[str] = Field(default=None, max_length=80)
+    materiality_threshold: Optional[float] = None
 
 
 class WorkbookEntityConfigRequest(BaseModel):
@@ -45,6 +50,11 @@ class WorkbookOut(BaseModel):
     financial_year: str
     functional_currency: str
     engagement_type: Optional[str] = None
+    assessment_year: Optional[str] = None
+    industry_type: Optional[str] = None
+    reporting_framework: Optional[str] = None
+    tax_id: Optional[str] = None
+    materiality_threshold: Optional[float] = None
     status: Literal['Draft', 'In Progress', 'Completed']
     last_modified: str
     risk_score: int

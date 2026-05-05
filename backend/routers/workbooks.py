@@ -57,7 +57,7 @@ def _current_user_id(
 def list_workbooks(user_id: str = Depends(_current_user_id)):
     try:
         rows = list_workbooks_for_user(user_id)
-        return [WorkbookOut(**to_public_workbook(row)) for row in rows]
+        return [WorkbookOut(**to_public_workbook(row, include_rows=False)) for row in rows]
     except WorkbookError as exc:
         detail = str(exc)
         if _is_server_error(detail):
@@ -74,8 +74,13 @@ def create_workbook(payload: WorkbookCreateRequest, user_id: str = Depends(_curr
             financial_year=payload.financial_year,
             functional_currency=payload.functional_currency,
             engagement_type=payload.engagement_type,
+            assessment_year=payload.assessment_year,
+            industry_type=payload.industry_type,
+            reporting_framework=payload.reporting_framework,
+            tax_id=payload.tax_id,
+            materiality_threshold=payload.materiality_threshold,
         )
-        return WorkbookOut(**to_public_workbook(row))
+        return WorkbookOut(**to_public_workbook(row, include_rows=False))
     except WorkbookError as exc:
         detail = str(exc)
         if _is_server_error(detail):
@@ -105,7 +110,7 @@ def save_entity_config(
 ):
     try:
         row = save_entity_config_for_user(user_id, workbook_id, payload.model_dump())
-        return WorkbookOut(**to_public_workbook(row))
+        return WorkbookOut(**to_public_workbook(row, include_rows=False))
     except WorkbookError as exc:
         detail = str(exc)
         if "not found" in detail.lower():
