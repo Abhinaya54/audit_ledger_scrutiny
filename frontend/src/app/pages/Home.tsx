@@ -255,7 +255,7 @@ export default function Home() {
               });
               toast.success('Workbook created');
               setShowCreateModal(false);
-              navigate(`/data-ingestion?workbookId=${newWorkbook.id}`);
+              navigate(`/workbook/${newWorkbook.id}`);
             } catch (error: any) {
               toast.error(error?.message || 'Failed to create workbook');
             }
