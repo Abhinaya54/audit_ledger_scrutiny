@@ -29,7 +29,6 @@ export const apiClient = {
   get: async (endpoint: string, token?: string) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token, false),
     });
     if (response.status === 401) {
@@ -47,7 +46,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token),
       body: JSON.stringify(data),
     });
@@ -66,7 +64,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token, false),
       body: formData,
     });
@@ -85,7 +82,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token, false),
       body: formData,
     });
@@ -104,7 +100,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token),
       body: JSON.stringify(data),
     });
@@ -123,7 +118,6 @@ export const apiClient = {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',
       mode: 'cors',
-      credentials: 'include',
       headers: _headers(token, false),
     });
     if (response.status === 401) {
