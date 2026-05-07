@@ -141,7 +141,6 @@ export default function Workbook() {
             analysisSummary={workbook.analysis_summary}
             categoryCounts={workbook.category_counts}
             columnMappings={workbook.column_mappings}
-            reviewRows={workbook.review_rows}
           />
         )}
         {activeTab === 'investigation' && (

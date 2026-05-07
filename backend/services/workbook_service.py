@@ -285,17 +285,23 @@ def query_transactions_for_user(
     user_id: str,
     workbook_id: str,
     filters: Dict[str, Any],
+    transaction_type: str = "review",
+    skip: int = 0,
+    limit: int = 100
 ) -> List[Dict[str, Any]]:
-    """Query and filter transactions from a workbook's analysis."""
+    """Query and filter transactions from a workbook's analysis with pagination."""
     doc = get_workbook_for_user(user_id, workbook_id)
     
-    # Get all transactions (flagged rows contain the anomalies)
-    if "flagged_rows" in doc and doc["flagged_rows"]:
-        all_rows = doc["flagged_rows"]
-    else:
-        cursor = _get_db().transactions.find({"workbook_id": doc["_id"], "type": "flagged"})
+    # Build MongoDB query for workbook and type
+    query = {"workbook_id": doc["_id"], "type": transaction_type}
+    
+    try:
+        cursor = _get_db().transactions.find(query)
+        # We have to fetch all to filter in memory (complex filters)
         all_rows = [c.get("data", {}) for c in cursor]
-        
+    except Exception:
+        all_rows = []
+    
     if not all_rows:
         return []
     
@@ -343,7 +349,9 @@ def query_transactions_for_user(
             if search_term in str(row.get("narration", "")).lower()
         ]
     
-    return filtered_rows
+    # Apply pagination
+    paginated_rows = filtered_rows[skip:skip + limit]
+    return paginated_rows
 
 
 def to_public_workbook(doc: Dict[str, Any], include_rows: bool = True) -> Dict[str, Any]:

@@ -10,7 +10,6 @@ interface RiskIntelligenceDashboardProps {
   analysisSummary?: Record<string, any>;
   categoryCounts?: any[];
   columnMappings?: Record<string, string>;
-  reviewRows?: any[];
 }
 
 export default function RiskIntelligenceDashboard({
@@ -19,7 +18,6 @@ export default function RiskIntelligenceDashboard({
   analysisSummary,
   categoryCounts,
   columnMappings = {},
-  reviewRows = [],
 }: RiskIntelligenceDashboardProps) {
   const navigate = useNavigate();
   const { workbookData } = useWorkbook();
@@ -92,15 +90,8 @@ export default function RiskIntelligenceDashboard({
       {showReviewPanel && (
         <DatasetReviewPanel
           onClose={() => setShowReviewPanel(false)}
+          workbookId={workbookId}
           columnMappings={workbookData?.columnMappings || columnMappings}
-          reviewRows={workbookData?.csvData || reviewRows}
-          availableColumns={
-            workbookData?.csvData && workbookData.csvData.length > 0
-              ? Object.keys(workbookData.csvData[0])
-              : reviewRows.length > 0
-              ? Object.keys(reviewRows[0])
-              : []
-          }
         />
       )}
 
