@@ -1,4 +1,5 @@
 import os
+from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -169,6 +170,7 @@ async def ingest_workbook_file(
             os.unlink(tmp_path)
         except Exception:
             pass
+
 @router.delete("/{workbook_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_workbook(workbook_id: str, user_id: str = Depends(_current_user_id)):
     try:

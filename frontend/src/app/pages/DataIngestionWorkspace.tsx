@@ -268,17 +268,22 @@ export default function DataIngestionWorkspace() {
       const result = await workbooksApi.ingestFile(workbookId, uploadedFile!, true, 0.05);
       setAnalysisResult(result);
 
-      // Update metrics from result
       const summary = result?.summary || {};
+      const health = result?.health_summary || summary?.health_summary || {};
+
       setDataMetrics({
-        totalTransactions: summary.total_entries || 0,
-        totalDebit: summary.total_debit ? `₹${Number(summary.total_debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹24,63,500.00',
-        totalCredit: summary.total_credit ? `₹${Number(summary.total_credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹24,61,200.00',
-        dateRange: summary.date_from && summary.date_to ? `${summary.date_from} – ${summary.date_to}` : '01 Apr 2024 – 31 Mar 2025',
-        missingNarrations: summary.missing_narrations || 0,
-        duplicateJournalIds: summary.duplicate_journal_ids || 0,
-        unbalancedEntries: summary.unbalanced_entries || 0,
-        manualEntries: summary.manual_entries || 0,
+        totalTransactions: summary.total_entries || health.total_transactions || 0,
+        totalDebit: health.total_debit
+          ? `₹${Number(health.total_debit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : '₹0.00',
+        totalCredit: health.total_credit
+          ? `₹${Number(health.total_credit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          : '₹0.00',
+        dateRange: health.date_from && health.date_to ? `${health.date_from} – ${health.date_to}` : '—',
+        missingNarrations: health.missing_narrations || 0,
+        duplicateJournalIds: health.duplicate_journal_ids || 0,
+        unbalancedEntries: health.unbalanced_entries || 0,
+        manualEntries: health.manual_entries || 0,
       });
 
       setDataIngested(true);
