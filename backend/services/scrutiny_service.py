@@ -45,6 +45,10 @@ async def save_upload(file: UploadFile) -> str:
     return tmp.name
 
 
+def _normalize_amounts(series: pd.Series) -> pd.Series:
+    return pd.to_numeric(series.astype(str).str.replace(r"[^0-9\.-]", "", regex=True), errors="coerce")
+
+
 def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.DataFrame, dict]:
     raw_df = _read_uploaded_dataframe(tmp_path)
     df = ingest(tmp_path)
@@ -87,12 +91,23 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
     cols_to_drop = [c for c in ["scrutiny_flag"] if c in flagged_df.columns]
     flagged_rows = flagged_df.drop(columns=cols_to_drop).to_dict(orient="records")
 
+    preview = preview_schema_mapping(tmp_path)
+    health_summary = preview.get("health_summary", {})
+
     summary = {
         "total_entries": len(df),
         "rule_flagged": rule_flagged,
         "ml_flagged": ml_flagged,
         "total_flagged": total_flagged,
         "pct_flagged": round(total_flagged / len(df) * 100, 1) if len(df) > 0 else 0,
+        "total_debit": health_summary.get("total_debit", 0),
+        "total_credit": health_summary.get("total_credit", 0),
+        "date_from": health_summary.get("date_from"),
+        "date_to": health_summary.get("date_to"),
+        "missing_narrations": health_summary.get("missing_narrations", 0),
+        "duplicate_journal_ids": health_summary.get("duplicate_journal_ids", 0),
+        "manual_entries": health_summary.get("manual_entries", 0),
+        "unbalanced_entries": health_summary.get("unbalanced_entries", 0),
     }
 
     export_df = _build_export_dataframe(raw_df, df)
@@ -103,6 +118,7 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
 
     return export_df, {
         "summary": summary,
+        "health_summary": health_summary,
         "category_counts": category_counts,
         "flagged_rows": flagged_rows,
         "review_rows": review_rows,
