@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-type Variant = 'blue' | 'green' | 'red' | 'amber' | 'tertiary';
+type Variant = 'blue' | 'green' | 'red' | 'amber' | 'purple' | 'tertiary';
 
 interface MetricCardProps {
   label: string;
@@ -11,6 +11,7 @@ interface MetricCardProps {
 }
 
 const VARIANT_STYLES: Record<Variant, { border: string; iconBg: string; value: string }> = {
+  purple: { border: 'border-violet-500', iconBg: 'bg-surface-container-low text-violet-500', value: 'text-on-surface' },
   blue:   { border: 'border-accent',   iconBg: 'bg-surface-container-low text-accent',    value: 'text-on-surface'  },
   green:  { border: 'border-success',  iconBg: 'bg-surface-container-low text-success',   value: 'text-on-surface'  },
   red:    { border: 'border-destructive',    iconBg: 'bg-surface-container-low text-destructive',     value: 'text-on-surface'    },
