@@ -1,5 +1,3 @@
-import type { FlaggedRow } from '../../types/scrutiny';
-
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type WorkspaceTab = 'overview' | 'investigation' | 'documentation';
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { InvestigationWorkspaceState } from './types';
 import { FilterSection, CheckRow } from './ui';
 

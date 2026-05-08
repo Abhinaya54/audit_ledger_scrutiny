@@ -5,7 +5,7 @@ import { formatNumber } from '@/utils/format';
 import type { FlaggedRow } from '@/types/scrutiny';
 
 export function useDocumentationEditor(workbookName: string, financialYear: string, onExport: () => void) {
-  const documentationEditorHostRef = useRef<HTMLDivElement | null>(null);
+  const documentationEditorHostRef = useRef<HTMLDivElement>(null);
   const documentationQuillRef = useRef<Quill | null>(null);
   const [exporting, setExporting] = useState(false);
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { InvestigationWorkspaceState } from './types';
 import { toText } from './utils';
 import { InvestigationSidebar } from './InvestigationSidebar';

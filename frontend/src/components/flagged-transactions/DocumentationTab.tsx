@@ -1,10 +1,10 @@
-import React from 'react';
+import type { MouseEvent, RefObject } from 'react';
 import type { FlaggedRow } from '@/types/scrutiny';
 import { formatNumber } from '@/utils/format';
 import { splitCategories, toText } from './utils';
 
 interface Props {
-  documentationEditorHostRef: React.RefObject<HTMLDivElement | null>;
+  documentationEditorHostRef: RefObject<HTMLDivElement>;
   insertedEvidenceIds: string[];
   insertEvidenceToDocument: (row: FlaggedRow, index: number) => void;
   applyInlineFormat: (format: 'bold' | 'italic' | 'underline') => void;
@@ -32,7 +32,7 @@ export function DocumentationTab({
     (a, b) => Math.abs(Number(b.amount) || 0) - Math.abs(Number(a.amount) || 0),
   );
 
-  const handleToolbarMouseDown = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToolbarMouseDown = (event: MouseEvent<HTMLButtonElement>) => {
     // Keep Quill selection stable while clicking custom toolbar buttons.
     event.preventDefault();
   };
