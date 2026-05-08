@@ -22,8 +22,6 @@ interface Transaction {
   narration: string;
   debit: string;
   credit: string;
-  balance: string;
-  currency: string;
   scrutinyCategory: string;
   scrutinyReason: string;
 }
@@ -73,8 +71,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
       narration: row[columnMappings['Narration']] || row.narration || '',
       debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
       credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
-      balance: '', // Not mapped
-      currency: row[columnMappings['Currency']] || row.currency || 'INR',
       scrutinyCategory: row.scrutiny_category || '',
       scrutinyReason: row.scrutiny_reason || '',
     }));
@@ -214,8 +210,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
       narration: row[columnMappings['Narration']] || row.narration || '',
       debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
       credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
-      balance: '',
-      currency: 'INR',
       scrutinyCategory: '',
       scrutinyReason: '',
     }));
@@ -407,8 +401,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
       narration: row[columnMappings['Narration']] || row.narration || '',
       debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
       credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
-      balance: '',
-      currency: 'INR',
       scrutinyCategory: '',
       scrutinyReason: '',
     }));
@@ -438,8 +430,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
         narration: row[columnMappings['Narration']] || row.narration || '',
         debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
         credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
-        balance: '',
-        currency: 'INR',
         scrutinyCategory: '',
         scrutinyReason: '',
       }));
@@ -466,8 +456,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
         narration: row[columnMappings['Narration']] || row.narration || '',
         debit: row[columnMappings['Debit']] ? `₹${Number(row[columnMappings['Debit']]).toLocaleString()}` : '',
         credit: row[columnMappings['Credit']] ? `₹${Number(row[columnMappings['Credit']]).toLocaleString()}` : '',
-        balance: '',
-        currency: 'INR',
         scrutinyCategory: '',
         scrutinyReason: '',
       }));
@@ -705,8 +693,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
                         <th className="px-4 py-3 text-left text-xs text-gray-600 border-b">Narration</th>
                         <th className="px-4 py-3 text-right text-xs text-gray-600 border-b">Debit</th>
                         <th className="px-4 py-3 text-right text-xs text-gray-600 border-b">Credit</th>
-                        <th className="px-4 py-3 text-right text-xs text-gray-600 border-b">Balance</th>
-                        <th className="px-4 py-3 text-center text-xs text-gray-600 border-b">Currency</th>
                         <th className="px-4 py-3 text-left text-xs text-gray-600 border-b">Scrutiny Category</th>
                         <th className="px-4 py-3 text-left text-xs text-gray-600 border-b w-80">Scrutiny Reason</th>
                         <th className="px-4 py-3 text-center text-xs text-gray-600 border-b w-20">Action</th>
@@ -723,8 +709,6 @@ export default function Dashboard({ embedded = false, initialCsvData = [], initi
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-700 text-right">{transaction.debit}</td>
                           <td className="px-4 py-3 text-sm text-gray-700 text-right">{transaction.credit}</td>
-                          <td className="px-4 py-3 text-sm text-gray-700 text-right">{transaction.balance}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600 text-center">{transaction.currency}</td>
                           <td className="px-4 py-3 text-sm">
                             <span className="inline-block px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs">
                               {transaction.scrutinyCategory}
