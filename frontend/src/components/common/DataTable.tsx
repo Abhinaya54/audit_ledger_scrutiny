@@ -57,7 +57,7 @@ export default function DataTable({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="relative w-full max-w-sm">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -74,22 +74,22 @@ export default function DataTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search rows (Excel-style)"
-            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-xs text-slate-700 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
+            className="w-full border border-outline bg-surface-container-lowest py-2 pl-9 pr-3 text-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
           />
         </div>
-        <span className="text-xs text-slate-500 whitespace-nowrap">
+        <span className="text-status-label text-on-surface-variant whitespace-nowrap">
           {filteredRows.length.toLocaleString()} result{filteredRows.length === 1 ? '' : 's'}
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
-        <table className="w-full text-sm border-collapse">
+      <div className="overflow-x-auto border border-outline-variant">
+        <table className="w-full text-table-cell border-collapse">
           <thead>
-            <tr className="bg-[#134E4A] text-white">
+            <tr className="bg-primary-container text-on-primary-container">
               {columns.map((col) => (
                 <th
                   key={col}
-                  className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wider whitespace-nowrap"
+                  className="px-cell-x py-3 text-left text-table-header whitespace-nowrap border-r border-outline-variant last:border-r-0"
                 >
                   {col.replace(/_/g, ' ')}
                 </th>
@@ -101,7 +101,7 @@ export default function DataTable({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-8 text-center text-xs text-slate-500"
+                  className="px-cell-x py-8 text-center text-on-surface-variant"
                 >
                   No rows match your search.
                 </td>
@@ -109,16 +109,16 @@ export default function DataTable({
             )}
             {pageRows.map((row, i) => {
               const custom = rowClassName?.(row);
-              const base = custom ?? (i % 2 === 0 ? 'bg-white' : 'bg-slate-50');
+              const base = custom ?? (i % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface-container-low');
               return (
                 <tr
                   key={i}
-                  className={`${base} hover:brightness-[0.97] transition-all border-b border-slate-100 last:border-0`}
+                  className={`${base} hover:bg-surface-container-high transition-colors border-b border-outline-variant last:border-0`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col}
-                      className="px-4 py-2.5 whitespace-nowrap text-slate-700 max-w-[280px] truncate text-xs"
+                      className="px-cell-x py-cell-y whitespace-nowrap text-on-surface max-w-[280px] truncate border-r border-outline-variant last:border-r-0"
                     >
                       {String(row[col] ?? '')}
                     </td>
@@ -132,7 +132,7 @@ export default function DataTable({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-slate-500">
+          <span className="text-status-label text-on-surface-variant">
             Showing {(page * pageSize + 1).toLocaleString()}–
             {Math.min((page + 1) * pageSize, filteredRows.length).toLocaleString()} of{' '}
             {filteredRows.length.toLocaleString()} rows
@@ -141,17 +141,17 @@ export default function DataTable({
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-colors"
+              className="px-3 py-1.5 border border-outline bg-surface text-status-label font-medium text-on-surface disabled:opacity-40 hover:bg-surface-dim transition-colors"
             >
               Previous
             </button>
-            <span className="text-xs text-slate-500 px-2">
+            <span className="text-status-label text-on-surface-variant px-2">
               {page + 1} / {totalPages}
             </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition-colors"
+              className="px-3 py-1.5 border border-outline bg-surface text-status-label font-medium text-on-surface disabled:opacity-40 hover:bg-surface-dim transition-colors"
             >
               Next
             </button>

@@ -38,24 +38,24 @@ export default function FileUpload({ onFileSelect, accept = '.csv,.xlsx' }: File
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+      className={`block border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${
         dragOver
-          ? 'border-blue-500 bg-blue-50'
+          ? 'border-accent bg-surface-container-low'
           : fileName
-            ? 'border-green-400 bg-green-50'
-            : 'border-slate-300 hover:border-blue-400 bg-white'
+            ? 'border-success bg-surface-container-lowest'
+            : 'border-outline hover:border-accent bg-surface-container-lowest'
       }`}
     >
       <input type="file" accept={accept} onChange={handleChange} className="hidden" />
       {fileName ? (
         <>
-          <p className="text-green-700 font-semibold">{fileName}</p>
-          <p className="text-sm text-slate-500 mt-1">Click or drop to replace</p>
+          <p className="text-success font-semibold text-body-md">{fileName}</p>
+          <p className="text-status-label text-on-surface-variant mt-1">Click or drop to replace</p>
         </>
       ) : (
         <>
-          <p className="text-slate-600 font-medium">Drop your GL file here or click to browse</p>
-          <p className="text-sm text-slate-400 mt-1">Supports .csv and .xlsx</p>
+          <p className="text-on-surface font-medium text-body-md">Drop your GL file here or click to browse</p>
+          <p className="text-status-label text-on-surface-variant mt-1">Supports .csv and .xlsx</p>
         </>
       )}
     </label>
