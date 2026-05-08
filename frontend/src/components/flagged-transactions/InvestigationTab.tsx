@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { FilterSection, CheckRow } from './ui';
 import { 
   createWorkspace, 
@@ -10,8 +10,8 @@ import {
   splitCategories,
   toText
 } from './utils';
-import { InvestigationWorkspaceState, InvestigationFilters } from './types';
-import { nlQueryApi } from '../../api/nlQueryApi';
+import type { InvestigationWorkspaceState } from './types';
+import { nlQueryApi } from '@/api/nlQueryApi';
 
 interface InvestigationTabProps {
   reviewRows: Record<string, unknown>[];
@@ -80,14 +80,29 @@ export default function InvestigationTab({ reviewRows, totalEntries }: Investiga
   };
 
   const investigationRows = useMemo(() => {
-    if (!activeInvestigationTab?.hasRequested) {
-      return [];
-    }
+    // Always start with all rows, allowing users to see data before querying
 
     const appliedFilters = activeInvestigationTab.appliedFilters;
     const appliedQuery = activeInvestigationTab.appliedQuery;
 
     let rows = [...reviewRows];
+
+    const hasAnyFilter = 
+      appliedQuery.trim() !== '' ||
+      activeInvestigationTab.nlResult !== null ||
+      Object.entries(appliedFilters).some(([k, v]) => {
+        if (k === 'quarter') return v !== 'all';
+        if (Array.isArray(v)) return v.length > 0;
+        return v !== '';
+      });
+
+    // If no filters are applied, only show flagged transactions by default
+    if (!hasAnyFilter) {
+      rows = rows.filter(row => {
+        const cat = getRowValue(row, ['scrutiny_category', 'Scrutiny Category']);
+        return cat && cat.trim() !== '';
+      });
+    }
 
     rows = rows.filter((row) => {
       if (!appliedFilters.ledgerType) return true;
@@ -252,8 +267,8 @@ export default function InvestigationTab({ reviewRows, totalEntries }: Investiga
   const visibleColumns = reviewColumns.slice(0, 8);
 
   return (
-    <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="flex min-h-[66vh]">
+    <section className="bg-white border-t-0 border-slate-200 h-full flex flex-col overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {showFilters && (
           <aside className="w-[360px] border-r border-slate-200 bg-white p-5 overflow-y-auto">
             <div className="flex items-center justify-between mb-4">

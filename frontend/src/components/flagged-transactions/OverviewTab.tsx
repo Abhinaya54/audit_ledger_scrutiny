@@ -1,8 +1,8 @@
-import React from 'react';
+
 import { KpiCard } from './ui';
-import { formatNumber } from '../../utils/format';
+import { formatNumber } from '@/utils/format';
 import { rupeesToCr } from './utils';
-import { ControlRow } from './types';
+import type { ControlRow } from './types';
 
 interface OverviewTabProps {
   summary: { total_entries: number };

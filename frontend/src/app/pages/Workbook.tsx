@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { workbooksApi, type Workbook as WorkbookType } from '../../api/workbooksApi';
+import { workbooksApi, type Workbook as WorkbookType } from '@/api/workbooksApi';
 import RiskIntelligenceDashboard from './RiskIntelligenceDashboard';
-import Dashboard from './Dashboard';
 import Documentation from './Documentation';
+import InvestigationTab from '@/components/flagged-transactions/InvestigationTab';
+import { useWorkbook } from '../context/WorkbookContext';
 
 type TabType = 'overview' | 'investigation' | 'documentation';
 
 export default function Workbook() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { workbookData } = useWorkbook();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [workbook, setWorkbook] = useState<WorkbookType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -144,7 +146,10 @@ export default function Workbook() {
           />
         )}
         {activeTab === 'investigation' && (
-          <Dashboard embedded workbookId={workbook.id} />
+          <InvestigationTab 
+            reviewRows={workbookData?.csvData || []} 
+            totalEntries={workbook.analysis_summary?.total_entries || 0} 
+          />
         )}
         {activeTab === 'documentation' && <Documentation />}
       </div>

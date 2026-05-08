@@ -1,5 +1,4 @@
-import React from 'react';
-import { formatNumber } from '../../utils/format';
+
 
 export function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (

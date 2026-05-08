@@ -1,4 +1,4 @@
-import type { NLQueryResponse } from '../../api/nlQueryApi';
+import type { NLQueryResponse } from '@/api/nlQueryApi';
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type WorkspaceTab = 'overview' | 'investigation' | 'documentation';

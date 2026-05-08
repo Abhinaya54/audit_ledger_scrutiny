@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import type { FlaggedRow, ScrutinyResponse } from '../types/scrutiny';
-import { formatShortDate, initials, computeRiskBuckets, buildControls } from './flagged-transactions/utils';
-import { TabButton } from './flagged-transactions/ui';
-import OverviewTab from './flagged-transactions/OverviewTab';
-import InvestigationTab from './flagged-transactions/InvestigationTab';
-import DocumentationTab from './flagged-transactions/DocumentationTab';
-import type { ApprovalStatus, WorkspaceTab } from './flagged-transactions/types';
+import type { FlaggedRow, ScrutinyResponse } from '@/types/scrutiny';
+import { formatShortDate, initials, computeRiskBuckets, buildControls } from '@/components/flagged-transactions/utils';
+import { TabButton } from '@/components/flagged-transactions/ui';
+import OverviewTab from '@/components/flagged-transactions/OverviewTab';
+import InvestigationTab from '@/components/flagged-transactions/InvestigationTab';
+import DocumentationTab from '@/components/flagged-transactions/DocumentationTab';
+import type { ApprovalStatus, WorkspaceTab } from '@/components/flagged-transactions/types';
 
 interface Props {
   results: ScrutinyResponse | null;

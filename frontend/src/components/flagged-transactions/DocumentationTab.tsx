@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
-import { FlaggedRow } from '../../types/scrutiny';
-import { formatNumber } from '../../utils/format';
-import { downloadBlob, escapeHtml, toFileSafeName } from './utils';
+import type { FlaggedRow } from '@/types/scrutiny';
+import { formatNumber } from '@/utils/format';
+import { downloadBlob, escapeHtml, toFileSafeName, splitCategories, toText } from './utils';
 
 interface DocumentationTabProps {
   workbookName: string;

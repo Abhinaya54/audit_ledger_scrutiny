@@ -54,8 +54,8 @@ def parse_range(text: str) -> Dict[str, Optional[float]]:
     text = text.lower()
     result = {"min": None, "max": None}
     
-    # "between X and Y"
-    between_match = re.search(r"between\s+(.*?)\s+and\s+(.*)", text)
+    # "between X and Y" or "between X to Y"
+    between_match = re.search(r"between\s+(.*?)\s+(?:and|to)\s+(.*)", text)
     if between_match:
         result["min"] = parse_amount(between_match.group(1))
         result["max"] = parse_amount(between_match.group(2))
