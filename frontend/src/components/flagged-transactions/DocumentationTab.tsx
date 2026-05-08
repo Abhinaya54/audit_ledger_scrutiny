@@ -1,6 +1,6 @@
 import React from 'react';
-import type { FlaggedRow } from '../../types/scrutiny';
-import { formatNumber } from '../../utils/format';
+import type { FlaggedRow } from '@/types/scrutiny';
+import { formatNumber } from '@/utils/format';
 import { splitCategories, toText } from './utils';
 
 interface Props {

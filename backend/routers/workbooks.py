@@ -146,15 +146,20 @@ async def ingest_workbook_file(
 
     tmp_path = await save_upload(file)
     try:
-        _, result = run_analysis(tmp_path, use_ml, contamination)
+        _, result = run_analysis(tmp_path, use_ml, contamination, workbook_id=workbook_id)
         save_analysis_for_user(
             user_id,
             workbook_id,
             summary=result.get("summary", {}),
             category_counts=result.get("category_counts", []),
-            flagged_rows=result.get("flagged_rows", []),
-            review_rows=result.get("review_rows", []),
+            transaction_docs=result.get("transaction_docs", []),
         )
+        # Remove massive row arrays from response to keep it lightweight
+        if "transaction_docs" in result:
+            del result["transaction_docs"]
+        if "flagged_rows" in result:
+            del result["flagged_rows"]
+            
         return result
     except SchemaError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

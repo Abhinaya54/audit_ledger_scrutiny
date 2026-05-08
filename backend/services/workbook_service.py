@@ -193,8 +193,7 @@ def save_analysis_for_user(
     workbook_id: str,
     summary: Dict[str, Any],
     category_counts: List[Dict[str, Any]],
-    flagged_rows: Optional[List[Dict[str, Any]]] = None,
-    review_rows: Optional[List[Dict[str, Any]]] = None,
+    transaction_docs: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     doc = get_workbook_for_user(user_id, workbook_id)
     now = datetime.now(timezone.utc)
@@ -213,14 +212,15 @@ def save_analysis_for_user(
     }
 
     try:
+        # Clear existing transactions for this workbook
         _get_db().transactions.delete_many({"workbook_id": doc["_id"]})
-        if flagged_rows:
-            flagged_docs = [{"workbook_id": doc["_id"], "type": "flagged", "data": r} for r in flagged_rows]
-            _get_db().transactions.insert_many(flagged_docs)
+        
+        if transaction_docs:
+            # Prepare docs for insertion (ensure workbook_id is ObjectId)
+            for tdoc in transaction_docs:
+                tdoc["workbook_id"] = doc["_id"]
             
-        if review_rows:
-            review_docs = [{"workbook_id": doc["_id"], "type": "review", "data": r} for r in review_rows]
-            _get_db().transactions.insert_many(review_docs)
+            _get_db().transactions.insert_many(transaction_docs)
 
         _workbooks_collection().update_one(
             {"_id": doc["_id"], "owner_user_id": user_id},
@@ -292,66 +292,54 @@ def query_transactions_for_user(
     """Query and filter transactions from a workbook's analysis with pagination."""
     doc = get_workbook_for_user(user_id, workbook_id)
     
-    # Build MongoDB query for workbook and type
-    query = {"workbook_id": doc["_id"], "type": transaction_type}
+    # Build MongoDB query
+    query: Dict[str, Any] = {"workbook_id": doc["_id"]}
     
+    # If transaction_type is 'flagged', only return flagged items
+    if transaction_type == "flagged":
+        query["is_flagged"] = True
+    
+    # Apply filters to MongoDB query for performance
+    if filters.get("financial_year"):
+        query["financial_year"] = filters["financial_year"]
+    
+    if filters.get("quarter") and filters["quarter"] != "all":
+        query["quarter"] = filters["quarter"]
+        
+    if filters.get("voucher_types"):
+        query["voucher_type"] = {"$in": [v.lower() for v in filters["voucher_types"]]}
+        
+    if filters.get("account_series"):
+        query["account_series"] = {"$regex": f"^{filters['account_series']}", "$options": "i"}
+        
+    if filters.get("ledger_type"):
+        query["ledger_type"] = {"$regex": filters["ledger_type"], "$options": "i"}
+
+    if filters.get("min_amount") is not None or filters.get("max_amount") is not None:
+        amt_query = {}
+        if filters.get("min_amount") is not None:
+            amt_query["$gte"] = float(filters["min_amount"])
+        if filters.get("max_amount") is not None:
+            amt_query["$lte"] = float(filters["max_amount"])
+        query["amount"] = amt_query
+
+    if filters.get("search_text"):
+        query["searchable_text"] = {"$regex": filters["search_text"].lower(), "$options": "i"}
+
     try:
-        cursor = _get_db().transactions.find(query)
-        # We have to fetch all to filter in memory (complex filters)
-        all_rows = [c.get("data", {}) for c in cursor]
+        cursor = _get_db().transactions.find(query).skip(skip).limit(limit)
+        # Combine the generated metadata and the raw data for the frontend
+        results = []
+        for doc in cursor:
+            row = doc.get("data", {})
+            # Ensure derived fields are included in the row if they're not there
+            row["scrutiny_category"] = doc.get("category", "")
+            row["scrutiny_reason"] = doc.get("reason", "")
+            row["is_flagged"] = doc.get("is_flagged", False)
+            results.append(row)
+        return results
     except Exception:
-        all_rows = []
-    
-    if not all_rows:
         return []
-    
-    filtered_rows = all_rows
-    
-    # Apply date range filter
-    if "start_date" in filters or "end_date" in filters:
-        start_date = filters.get("start_date")
-        end_date = filters.get("end_date")
-        filtered_rows = [
-            row for row in filtered_rows
-            if _is_date_in_range(row.get("date"), start_date, end_date)
-        ]
-    
-    # Apply account filter
-    if "accounts" in filters and filters["accounts"]:
-        account_list = filters["accounts"]
-        filtered_rows = [
-            row for row in filtered_rows
-            if any(acc.lower() in str(row.get("account_name", "")).lower() for acc in account_list)
-        ]
-    
-    # Apply amount range filter
-    if "min_amount" in filters or "max_amount" in filters:
-        min_amt = filters.get("min_amount", 0)
-        max_amt = filters.get("max_amount", float('inf'))
-        filtered_rows = [
-            row for row in filtered_rows
-            if _is_amount_in_range(row, min_amt, max_amt)
-        ]
-    
-    # Apply category filter
-    if "categories" in filters and filters["categories"]:
-        cat_list = filters["categories"]
-        filtered_rows = [
-            row for row in filtered_rows
-            if any(cat.lower() in str(row.get("scrutiny_category", "")).lower() for cat in cat_list)
-        ]
-    
-    # Apply text search in narration
-    if "search_text" in filters and filters["search_text"]:
-        search_term = filters["search_text"].lower()
-        filtered_rows = [
-            row for row in filtered_rows
-            if search_term in str(row.get("narration", "")).lower()
-        ]
-    
-    # Apply pagination
-    paginated_rows = filtered_rows[skip:skip + limit]
-    return paginated_rows
 
 
 def to_public_workbook(doc: Dict[str, Any], include_rows: bool = True) -> Dict[str, Any]:

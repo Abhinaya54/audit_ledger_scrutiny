@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import Quill from 'quill';
 import { escapeHtml, toFileSafeName, downloadBlob } from '../utils';
-import { formatNumber } from '../../../utils/format';
-import type { FlaggedRow } from '../../../types/scrutiny';
+import { formatNumber } from '@/utils/format';
+import type { FlaggedRow } from '@/types/scrutiny';
 
 export function useDocumentationEditor(workbookName: string, financialYear: string, onExport: () => void) {
   const documentationEditorHostRef = useRef<HTMLDivElement | null>(null);

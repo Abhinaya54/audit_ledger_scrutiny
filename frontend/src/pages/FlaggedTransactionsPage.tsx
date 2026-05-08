@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import 'quill/dist/quill.snow.css';
 
-import type { ScrutinyResponse } from '../types/scrutiny';
+import type { ScrutinyResponse } from '@/types/scrutiny';
 
-import { OverviewTab } from '../components/flagged-transactions/OverviewTab';
-import { InvestigationTab } from '../components/flagged-transactions/InvestigationTab';
-import { DocumentationTab } from '../components/flagged-transactions/DocumentationTab';
-import { useInvestigationWorkspace } from '../components/flagged-transactions/hooks/useInvestigationWorkspace';
-import { useDocumentationEditor } from '../components/flagged-transactions/hooks/useDocumentationEditor';
-import { initials, formatShortDate } from '../components/flagged-transactions/utils';
-import { TabButton } from '../components/flagged-transactions/ui';
-import type { WorkspaceTab, ApprovalStatus } from '../components/flagged-transactions/types';
+import { OverviewTab } from '@/components/flagged-transactions/OverviewTab';
+import { InvestigationTab } from '@/components/flagged-transactions/InvestigationTab';
+import { DocumentationTab } from '@/components/flagged-transactions/DocumentationTab';
+import { useInvestigationWorkspace } from '@/components/flagged-transactions/hooks/useInvestigationWorkspace';
+import { useDocumentationEditor } from '@/components/flagged-transactions/hooks/useDocumentationEditor';
+import { initials, formatShortDate } from '@/components/flagged-transactions/utils';
+import { TabButton } from '@/components/flagged-transactions/ui';
+import type { WorkspaceTab, ApprovalStatus } from '@/components/flagged-transactions/types';
 
 interface Props {
   results: ScrutinyResponse | null;

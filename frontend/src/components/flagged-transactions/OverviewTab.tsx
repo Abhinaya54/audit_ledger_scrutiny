@@ -1,6 +1,6 @@
 import React from 'react';
-import type { ScrutinyResponse } from '../../types/scrutiny';
-import { formatNumber } from '../../utils/format';
+import type { ScrutinyResponse } from '@/types/scrutiny';
+import { formatNumber } from '@/utils/format';
 import { rupeesToCr, computeRiskBuckets, buildControls } from './utils';
 import { KpiCard } from './ui';
 

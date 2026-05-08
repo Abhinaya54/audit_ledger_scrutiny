@@ -1,14 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { scrutinyApi } from '../../api/scrutinyApi';
-import { workbooksApi } from '../../api/workbooksApi';
-import { triggerDownload } from '../../utils/format';
-import type { ScrutinyResponse } from '../../types/scrutiny';
-import type { SaveWorkbookEntityConfigPayload, Workbook, WorkbookEntityConfig } from '../../types/workbook';
-import DashboardPage from '../../pages/DashboardPage';
-import ClientDashboardPage from '../../pages/ClientDashboardPage';
-import FlaggedTransactionsPage from '../../pages/FlaggedTransactionsPage';
-import AuditReportPage from '../../pages/AuditReportPage';
-import DataIngestionWorkspacePage from '../../pages/DataIngestionWorkspacePage';
+import { scrutinyApi } from '@/api/scrutinyApi';
+import { workbooksApi } from '@/api/workbooksApi';
+import { triggerDownload } from '@/utils/format';
+import type { ScrutinyResponse } from '@/types/scrutiny';
+import type { SaveWorkbookEntityConfigPayload, Workbook, WorkbookEntityConfig } from '@/types/workbook';
+import DashboardPage from '@/pages/DashboardPage';
+import ClientDashboardPage from '@/pages/ClientDashboardPage';
+import FlaggedTransactionsPage from '@/pages/FlaggedTransactionsPage';
+import AuditReportPage from '@/pages/AuditReportPage';
+import DataIngestionWorkspacePage from '@/pages/DataIngestionWorkspacePage';
 
 export type Page = 'dashboard' | 'clients' | 'ingestion' | 'results' | 'insights';
 
@@ -328,7 +328,7 @@ export default function AppShell({
     setResults(null);
     setApprovalStatus('pending');
     try {
-      const data = await scrutinyApi.analyze(activeFile, true, contamination);
+      const data = await workbooksApi.ingestFile(workbookId, activeFile, true, contamination);
       setResults(data);
       setPage('results');
     } catch (e: unknown) {

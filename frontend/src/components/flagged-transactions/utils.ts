@@ -1,4 +1,4 @@
-import type { FlaggedRow } from '../../types/scrutiny';
+import type { FlaggedRow } from '@/types/scrutiny';
 import type { InvestigationFilters, InvestigationWorkspaceState, ControlRow } from './types';
 
 export function toText(value: unknown): string {

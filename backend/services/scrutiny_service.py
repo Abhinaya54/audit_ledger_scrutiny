@@ -49,7 +49,65 @@ def _normalize_amounts(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series.astype(str).str.replace(r"[^0-9\.-]", "", regex=True), errors="coerce")
 
 
-def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.DataFrame, dict]:
+def _build_transaction_docs(raw_df: pd.DataFrame, analyzed_df: pd.DataFrame, workbook_id: str) -> list[dict]:
+    import re
+    docs = []
+    # Ensure they are aligned
+    raw_records = raw_df.reset_index(drop=True).to_dict(orient="records")
+    norm_records = analyzed_df.reset_index(drop=True).to_dict(orient="records")
+    
+    for raw, norm in zip(raw_records, norm_records):
+        # Generate metadata
+        date_val = norm.get("date")
+        amount = norm.get("amount", 0)
+        
+        # Quarter mapping
+        quarter = None
+        fin_year = None
+        dt = None
+        if pd.notnull(date_val):
+            dt = pd.to_datetime(date_val)
+            if pd.notnull(dt):
+                q = (dt.month - 1) // 3 + 1
+                quarter = f"q{q}"
+                fin_year = str(dt.year)
+                
+        # searchable text (narration + ledger_name + voucher_type)
+        search_parts = [
+            str(norm.get("narration", "")),
+            str(norm.get("ledger_name", "")),
+            str(norm.get("voucher_type", ""))
+        ]
+        searchable_text = " ".join(filter(None, search_parts)).lower()
+        
+        # Extract account series
+        ledger_name = str(norm.get("ledger_name", ""))
+        account_series = ""
+        match = re.match(r"^(\d+)", ledger_name)
+        if match:
+            account_series = match.group(1)
+            
+        doc = {
+            "workbook_id": workbook_id,
+            "type": "transaction",
+            "is_flagged": bool(norm.get("scrutiny_flag")),
+            "date": dt.strftime("%Y-%m-%d") if dt is not None else None,
+            "financial_year": fin_year,
+            "quarter": quarter,
+            "ledger_type": ledger_name,
+            "account_series": account_series,
+            "voucher_type": str(norm.get("voucher_type", "")).lower(),
+            "amount": float(amount) if pd.notnull(amount) else 0.0,
+            "searchable_text": searchable_text,
+            "category": norm.get("scrutiny_category", ""),
+            "reason": norm.get("scrutiny_reason", ""),
+            "data": raw
+        }
+        docs.append(doc)
+    return docs
+
+
+def run_analysis(tmp_path: str, use_ml: bool, contamination: float, workbook_id: str = "") -> tuple[pd.DataFrame, dict]:
     raw_df = _read_uploaded_dataframe(tmp_path)
     df = ingest(tmp_path)
 
@@ -111,17 +169,16 @@ def run_analysis(tmp_path: str, use_ml: bool, contamination: float) -> tuple[pd.
     }
 
     export_df = _build_export_dataframe(raw_df, df)
-    review_df = export_df[export_df["Anomaly_Type"].fillna("").astype(str).str.strip() != ""].copy()
-    review_df = review_df.fillna("")
-
-    review_rows = review_df.to_dict(orient="records")
+    
+    # Build transaction docs for database persistence
+    transaction_docs = _build_transaction_docs(raw_df, df, workbook_id)
 
     return export_df, {
         "summary": summary,
         "health_summary": health_summary,
         "category_counts": category_counts,
         "flagged_rows": flagged_rows,
-        "review_rows": review_rows,
+        "transaction_docs": transaction_docs,
     }
 
 
