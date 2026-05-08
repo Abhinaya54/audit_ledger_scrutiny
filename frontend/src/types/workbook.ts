@@ -58,4 +58,6 @@ export interface SaveWorkbookEntityConfigPayload {
   functional_currency: string;
   reporting_currency?: string;
   company_code?: string;
+  header_row?: number;
+  column_mappings?: Record<string, string>;
 }

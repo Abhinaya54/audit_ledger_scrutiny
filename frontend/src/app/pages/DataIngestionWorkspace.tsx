@@ -240,8 +240,23 @@ export default function DataIngestionWorkspace() {
     setEntityConfigComplete(false);
   };
 
+  const isEntityConfigValid = () => {
+    return (
+      entityName.trim().length >= 2 &&
+      financialYear.trim().length >= 4 &&
+      ledgerType.trim().length >= 2 &&
+      functionalCurrency.trim().length >= 2
+    );
+  };
+
+  const isMappingValid = () => {
+    return columnMappings
+      .filter(m => m.required)
+      .every(m => m.mappedColumn.trim().length > 0);
+  };
+
   const isReadyForAnalysis = () => {
-    return !!uploadedFile;
+    return !!uploadedFile && isEntityConfigValid() && isMappingValid();
   };
 
   const handleRunAnalysis = async () => {
@@ -255,8 +270,8 @@ export default function DataIngestionWorkspace() {
         financial_year: financialYear,
         ledger_type: ledgerType,
         functional_currency: functionalCurrency,
-        reporting_currency: reportingCurrency,
-        company_code: companyCode,
+        reporting_currency: reportingCurrency || undefined,
+        company_code: companyCode || undefined,
         header_row: parseInt(headerRowPosition),
         column_mappings: columnMappings.reduce((acc, m) => {
           if (m.mappedColumn) acc[m.systemField] = m.mappedColumn;
@@ -410,8 +425,15 @@ export default function DataIngestionWorkspace() {
           {!entityConfigComplete && (
             <div className="mt-6 flex justify-end">
               <button
-                onClick={() => setEntityConfigComplete(true)}
-                className="px-6 py-2.5 text-sm bg-[#095859] text-white hover:bg-[#0B6B6A] transition-colors rounded-lg"
+                onClick={() => {
+                  if (isEntityConfigValid()) {
+                    setEntityConfigComplete(true);
+                  } else {
+                    toast.error('Please fill all required entity configuration fields correctly.');
+                  }
+                }}
+                disabled={!isEntityConfigValid()}
+                className="px-6 py-2.5 text-sm bg-[#095859] text-white hover:bg-[#0B6B6A] transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next: Upload Ledger
               </button>
@@ -684,7 +706,7 @@ export default function DataIngestionWorkspace() {
               </button>
               <button
                 onClick={handleRunAnalysis}
-                disabled={isAnalyzing || !workbookId}
+                disabled={isAnalyzing || !workbookId || !isReadyForAnalysis()}
                 className="px-5 py-2 text-sm bg-[#095859] text-white hover:bg-[#0B6B6A] transition-colors rounded-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isAnalyzing ? (
@@ -693,7 +715,7 @@ export default function DataIngestionWorkspace() {
                     Analyzing...
                   </>
                 ) : (
-                  isReplaceMode ? 'Re-run Risk Analysis' : 'Run Risk Analysis'
+                  !isReadyForAnalysis() ? 'Complete Mapping to Run' : (isReplaceMode ? 'Re-run Risk Analysis' : 'Run Risk Analysis')
                 )}
               </button>
               {analysisResult && (
