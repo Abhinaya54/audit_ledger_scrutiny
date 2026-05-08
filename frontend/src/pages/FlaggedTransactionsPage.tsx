@@ -4,6 +4,7 @@ import 'quill/dist/quill.snow.css';
 
 import type { FlaggedRow, ScrutinyResponse } from '../types/scrutiny';
 import { formatNumber } from '../utils/format';
+import { nlQueryApi, type NLQueryResponse } from '../api/nlQueryApi';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 type WorkspaceTab = 'overview' | 'investigation' | 'documentation';
@@ -49,6 +50,9 @@ interface InvestigationWorkspaceState {
   appliedFilters: InvestigationFilters;
   queryInput: string;
   appliedQuery: string;
+  nlResult: NLQueryResponse | null;
+  nlError: string | null;
+  isLoading: boolean;
   hasRequested: boolean;
 }
 
@@ -82,12 +86,14 @@ function computeRiskBuckets(flaggedRows: FlaggedRow[]) {
     const isHigh =
       categories.includes('ML Anomaly') ||
       categories.includes('Manual Journal') ||
+      categories.includes('High Value Transactions') ||
       amount >= 100000;
     const isMedium =
       categories.includes('Period End') ||
       categories.includes('Weekend Entries') ||
       categories.includes('Duplicate Check') ||
-      categories.includes('Round Numbers');
+      categories.includes('Round Numbers') ||
+      categories.includes('Suspense Account');
 
     if (isHigh) {
       initial.high.count += 1;
@@ -116,6 +122,8 @@ function buildControls(flaggedRows: FlaggedRow[]): ControlRow[] {
   const periodEnd = rowsByCategory(flaggedRows, 'Period End');
   const weekend = rowsByCategory(flaggedRows, 'Weekend Entries');
   const round = rowsByCategory(flaggedRows, 'Round Numbers');
+  const highValue = rowsByCategory(flaggedRows, 'High Value Transactions');
+  const suspense = rowsByCategory(flaggedRows, 'Suspense Account');
   const unusualAmount = flaggedRows.filter((row) => Math.abs(Number(row.amount) || 0) >= 150000);
 
   const sumAmount = (rows: FlaggedRow[]) => rows.reduce((acc, row) => acc + Math.abs(Number(row.amount) || 0), 0);
@@ -128,6 +136,12 @@ function buildControls(flaggedRows: FlaggedRow[]): ControlRow[] {
       status: 'Active',
     },
     {
+      controlName: 'High Value',
+      triggeredTransactions: highValue.length,
+      exposure: sumAmount(highValue),
+      status: 'Active',
+    },
+    {
       controlName: 'Unusual Amount',
       triggeredTransactions: unusualAmount.length,
       exposure: sumAmount(unusualAmount),
@@ -137,6 +151,12 @@ function buildControls(flaggedRows: FlaggedRow[]): ControlRow[] {
       controlName: 'Sequence Gap',
       triggeredTransactions: duplicate.length,
       exposure: sumAmount(duplicate),
+      status: 'Active',
+    },
+    {
+      controlName: 'Suspense Account',
+      triggeredTransactions: suspense.length,
+      exposure: sumAmount(suspense),
       status: 'Active',
     },
     {
@@ -225,6 +245,9 @@ function createWorkspace(index: number): InvestigationWorkspaceState {
     appliedFilters: cloneFilters(EMPTY_FILTERS),
     queryInput: '',
     appliedQuery: '',
+    nlResult: null,
+    nlError: null,
+    isLoading: false,
     hasRequested: false,
   };
 }
@@ -282,28 +305,15 @@ function rowMatchesQuery(row: Record<string, unknown>, query: string): boolean {
     .map((value) => String(value ?? '').toLowerCase())
     .join(' ');
 
-  // Check amount filter (e.g., "above 500k", "over 100000")
-  const amountMatch = trimmed.match(/(?:above|over|greater than)\s*₹?\s*([\d,]+)/i);
-  if (amountMatch) {
-    const threshold = Number(amountMatch[1].replace(/,/g, ''));
-    if (Number.isFinite(threshold) && getRowAmount(row) <= threshold) {
-      return false; // Exclude row if amount doesn't meet the threshold
-    }
-  }
-
-  // Check text search tokens
+  // Basic token search
   const tokens = trimmed
-    .replace(/(?:above|over|greater than)\s*₹?\s*[\d,]+/gi, '') // Remove amount filter from query
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter((token) => token.length >= 3 && !['show', 'list', 'find', 'transaction', 'transactions', 'above', 'over', 'than'].includes(token));
 
-  // If no text tokens left after removing amount filter, only amount filter was specified
-  if (tokens.length === 0) {
-    return true; // Amount filter already passed
-  }
+  if (tokens.length === 0) return true;
 
-  // If text tokens exist, match ANY of them (OR logic)
+  // Match ANY of the tokens
   return tokens.some((token) => hay.includes(token));
 }
 
@@ -435,6 +445,37 @@ export default function FlaggedTransactionsPage({
     );
   };
 
+  const handleRunQuery = async () => {
+    if (!activeInvestigationTab || !activeInvestigationTab.queryInput.trim()) return;
+
+    updateActiveInvestigationTab((curr) => ({ ...curr, isLoading: true, nlError: null }));
+
+    try {
+      const result = await nlQueryApi.parse(activeInvestigationTab.queryInput);
+      
+      updateActiveInvestigationTab((curr) => ({
+        ...curr,
+        appliedQuery: curr.queryInput,
+        nlResult: result,
+        nlError: null,
+        isLoading: false,
+        hasRequested: true,
+      }));
+    } catch (err: any) {
+      const message = err?.message || 'Query analysis failed. Using text search fallback.';
+      console.error('NL Query failed:', err);
+      // Graceful degradation: fall back to text-only mode
+      updateActiveInvestigationTab((curr) => ({
+        ...curr,
+        appliedQuery: curr.queryInput,
+        nlResult: null,
+        nlError: message,
+        isLoading: false,
+        hasRequested: true,
+      }));
+    }
+  };
+
   const investigationRows = useMemo(() => {
     if (!activeInvestigationTab?.hasRequested) {
       return [];
@@ -478,6 +519,54 @@ export default function FlaggedTransactionsPage({
       return quarterMap[appliedFilters.quarter]?.includes(month) ?? true;
     });
 
+    // --- INTEGRATE NL FILTERS (structured data from backend) ---
+    if (activeInvestigationTab.nlResult) {
+      const { filters, matched_controls } = activeInvestigationTab.nlResult;
+
+      // Filter by matched scrutiny categories (e.g. "Weekend Entries", "Manual Journal")
+      // Only controls backed by actual rule functions produce scrutiny_category values
+      if (matched_controls.length > 0) {
+        rows = rows.filter((row) => {
+          const cats = splitCategories(getRowValue(row, ['scrutiny_category', 'Scrutiny Category']));
+          return matched_controls.some((ctrl) => cats.includes(ctrl));
+        });
+      }
+
+      if (filters.amount_min !== undefined) {
+        rows = rows.filter((row) => getRowAmount(row) >= filters.amount_min);
+      }
+      if (filters.amount_max !== undefined) {
+        rows = rows.filter((row) => getRowAmount(row) <= filters.amount_max);
+      }
+      if (filters.voucher_types && filters.voucher_types.length > 0) {
+        rows = rows.filter((row) => {
+          const vType = getRowValue(row, ['voucher_type', 'Voucher Type']).toLowerCase();
+          return filters.voucher_types.some((t: string) => vType.includes(t.toLowerCase()));
+        });
+      }
+      if (filters.months && filters.months.length > 0) {
+        rows = rows.filter((row) => {
+          const dateValue = getRowValue(row, ['date', 'Date']);
+          const parsed = new Date(dateValue);
+          if (Number.isNaN(parsed.getTime())) return true;
+          return filters.months.includes(parsed.getMonth() + 1);
+        });
+      }
+      if (filters.quarters && filters.quarters.length > 0) {
+        rows = rows.filter((row) => {
+          const dateValue = getRowValue(row, ['date', 'Date']);
+          const parsed = new Date(dateValue);
+          if (Number.isNaN(parsed.getTime())) return true;
+          const q = Math.floor(parsed.getMonth() / 3) + 1;
+          return filters.quarters.includes(q);
+        });
+      }
+    } else {
+      // Fallback: no NL result (API failed or not used) — use text-based matching
+      rows = rows.filter((row) => rowMatchesQuery(row, appliedQuery));
+    }
+
+    // --- SIDEBAR FILTERS (always applied, stacked on top of NL filters) ---
     rows = rows.filter((row) => {
       if (!appliedFilters.keyword.trim()) return true;
       const narration = getRowValue(row, ['narration', 'Narration', 'description']);
@@ -512,8 +601,6 @@ export default function FlaggedTransactionsPage({
       const topCount = Math.max(1, Math.floor(sorted.length * 0.1));
       rows = sorted.slice(0, topCount);
     }
-
-    rows = rows.filter((row) => rowMatchesQuery(row, appliedQuery));
 
     return rows.slice(0, 300);
   }, [reviewRows, activeInvestigationTab]);
@@ -995,6 +1082,8 @@ export default function FlaggedTransactionsPage({
                           appliedFilters: cloneFilters(EMPTY_FILTERS),
                           queryInput: '',
                           appliedQuery: '',
+                          nlResult: null,
+                          nlError: null,
                           hasRequested: false,
                         }));
                       }}
@@ -1060,15 +1149,65 @@ export default function FlaggedTransactionsPage({
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 overflow-auto bg-slate-50">
+                  {/* NL Query Result Banner */}
+                  {activeInvestigationTab?.nlResult && (
+                    <div className="px-6 py-3 bg-white border-b border-slate-200 space-y-2">
+                      <div className="flex items-center gap-3">
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded">INTENT</span>
+                        <p className="text-sm text-slate-700 font-medium italic">"{activeInvestigationTab.nlResult.intent}"</p>
+                        <span className="text-xs text-slate-400 ml-auto">via {activeInvestigationTab.nlResult.parser_used} parser</span>
+                      </div>
+                      {activeInvestigationTab.nlResult.matched_controls.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-slate-500 font-medium">Controls:</span>
+                          {activeInvestigationTab.nlResult.matched_controls.map((ctrl) => (
+                            <span key={ctrl} className="px-2 py-0.5 bg-teal-50 text-teal-700 text-xs font-medium rounded border border-teal-200">{ctrl}</span>
+                          ))}
+                        </div>
+                      )}
+                      {activeInvestigationTab.nlResult.assumptions.length > 0 && (
+                        <div className="flex items-center gap-2 text-slate-500 text-xs">
+                          <span className="font-medium">Assumptions:</span>
+                          <span>{activeInvestigationTab.nlResult.assumptions.join(' · ')}</span>
+                        </div>
+                      )}
+                      {activeInvestigationTab.nlResult.warnings.map((w, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 text-xs">
+                          <span>⚠️</span>
+                          <p>{w}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* NL Query Error Banner */}
+                  {activeInvestigationTab?.nlError && !activeInvestigationTab?.nlResult && (
+                    <div className="px-6 py-3 bg-red-50 border-b border-red-200">
+                      <div className="flex items-center gap-2 text-red-600 text-xs">
+                        <span>⚠️</span>
+                        <p className="font-medium">Query analysis unavailable — using text search fallback.</p>
+                        <span className="text-red-400 ml-1">{activeInvestigationTab.nlError}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {investigationRows.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 py-16">
-                      <p className="text-3xl text-slate-300 mb-2">No transactions to display</p>
-                      <p className="text-2xl">
-                        {activeInvestigationTab?.hasRequested
-                          ? 'No rows matched this tab filters/query. Try different criteria.'
-                          : 'Enter a query below or apply filters to view data'}
-                      </p>
+                      {activeInvestigationTab?.isLoading ? (
+                         <div className="flex flex-col items-center gap-3">
+                           <div className="w-10 h-10 border-4 border-[#0F766E] border-t-transparent rounded-full animate-spin"></div>
+                           <p className="text-xl font-medium text-slate-600">Analyzing query...</p>
+                         </div>
+                      ) : (
+                        <>
+                          <p className="text-3xl text-slate-300 mb-2">No transactions to display</p>
+                          <p className="text-2xl">
+                            {activeInvestigationTab?.hasRequested
+                              ? 'No rows matched this tab filters/query. Try different criteria.'
+                              : 'Enter a query below or apply filters to view data'}
+                          </p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <table className="w-full min-w-max text-left">
@@ -1109,25 +1248,16 @@ export default function FlaggedTransactionsPage({
                     }
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        updateActiveInvestigationTab((current) => ({
-                          ...current,
-                          appliedQuery: current.queryInput,
-                          hasRequested: true,
-                        }));
+                        handleRunQuery();
                       }
                     }}
                   />
                   <button
-                    className="rounded-2xl bg-[#0F766E] text-white font-semibold px-5 py-2.5"
-                    onClick={() =>
-                      updateActiveInvestigationTab((current) => ({
-                        ...current,
-                        appliedQuery: current.queryInput,
-                        hasRequested: true,
-                      }))
-                    }
+                    className="rounded-2xl bg-[#0F766E] text-white font-semibold px-5 py-2.5 disabled:opacity-50"
+                    disabled={activeInvestigationTab?.isLoading}
+                    onClick={handleRunQuery}
                   >
-                    Run Query
+                    {activeInvestigationTab?.isLoading ? 'Running...' : 'Run Query'}
                   </button>
                 </div>
               </div>

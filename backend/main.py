@@ -13,7 +13,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import scrutiny, auth, workbooks, clients
+from routers import scrutiny, auth, workbooks, clients, nl_query
 
 APP_VERSION = "2.0.0"
 
@@ -37,6 +37,7 @@ app = FastAPI(
         {"name": "Auth", "description": "User signup, login, and JWT token management"},
         {"name": "Workbooks", "description": "Persistent audit engagements with analysis history"},
         {"name": "Clients", "description": "Client record management (CRM)"},
+        {"name": "NL Query", "description": "Natural language to audit filters parsing"},
     ],
 )
 
@@ -93,6 +94,7 @@ app.include_router(scrutiny.router, prefix="/api/scrutiny", tags=["Scrutiny"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(workbooks.router, prefix="/api/workbooks", tags=["Workbooks"])
 app.include_router(clients.router, prefix="/api/clients", tags=["Clients"])
+app.include_router(nl_query.router, prefix="/api/nl-query", tags=["NL Query"])
 
 if __name__ == "__main__":
     import uvicorn
